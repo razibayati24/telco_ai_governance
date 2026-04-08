@@ -1,0 +1,103 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 3740 >>
+stream
+BT /F2 18 Tf 72 700 Td (AI Model Governance and Lifecycle Policy) Tj ET
+BT /F1 10 Tf 72 675 Td (MT&T Corporation - Effective Date: January 1, 2026) Tj ET
+BT /F1 10 Tf 72 660 Td (Classification: INTERNAL - CONFIDENTIAL) Tj ET
+BT /F1 10 Tf 72 645 Td (Document Version: 2.1 | Last Updated: March 15, 2026) Tj ET
+0.5 0.5 0.5 RG 72 615 m 540 615 l S
+BT /F2 13 Tf 72 595 Td (1. Purpose) Tj ET
+BT /F1 10 Tf 72 575 Td (This policy defines the governance framework for the complete lifecycle of AI models within) Tj ET
+BT /F1 10 Tf 72 562 Td (MT&T Corporation, from development through deployment, monitoring, and retirement. It ensures) Tj ET
+BT /F1 10 Tf 72 549 Td (all AI models meet quality, security, fairness, and compliance standards before and during) Tj ET
+BT /F1 10 Tf 72 536 Td (production deployment.) Tj ET
+BT /F2 13 Tf 72 503 Td (2. Model Development Standards) Tj ET
+BT /F1 10 Tf 72 483 Td (All AI models must be developed using MT&T-approved frameworks and registered in Unity) Tj ET
+BT /F1 10 Tf 72 470 Td (Catalog's Model Registry. Each model must have a Model Card documenting: purpose and intended) Tj ET
+BT /F1 10 Tf 72 457 Td (use cases, training data sources and lineage, performance metrics and evaluation results,) Tj ET
+BT /F1 10 Tf 72 444 Td (known limitations and biases, responsible AI assessment results.) Tj ET
+BT /F1 10 Tf 72 421 Td (Foundation models accessed via the Databricks Foundation Model API or AI Gateway must be) Tj ET
+BT /F1 10 Tf 72 408 Td (pre-approved by the AI Ethics Committee. Currently approved foundation models include: Meta) Tj ET
+BT /F1 10 Tf 72 395 Td (Llama 3.3 70B, Anthropic Claude family, OpenAI GPT-4 family, Google Gemini family, and DBRX.) Tj ET
+BT /F1 10 Tf 72 382 Td (Provisioned throughput endpoints must be justified with a cost-benefit analysis showing) Tj ET
+BT /F1 10 Tf 72 369 Td (expected usage above 60% utilization.) Tj ET
+BT /F2 13 Tf 72 336 Td (3. Model Deployment Approval Process) Tj ET
+BT /F1 10 Tf 72 316 Td (Before any model is deployed to a serving endpoint, it must pass through a three-stage) Tj ET
+BT /F1 10 Tf 72 303 Td (approval gate: Stage 1 \(Technical Review\) - The MLOps team validates model performance,) Tj ET
+BT /F1 10 Tf 72 290 Td (resource requirements, and serving configuration. Stage 2 \(Security Review\) - The Security) Tj ET
+BT /F1 10 Tf 72 277 Td (team verifies access controls, data classification compliance, and AI Gateway guardrail) Tj ET
+BT /F1 10 Tf 72 264 Td (configuration. Stage 3 \(Business Review\) - The business owner confirms the model serves an) Tj ET
+BT /F1 10 Tf 72 251 Td (approved use case and budget allocation exists.) Tj ET
+BT /F1 10 Tf 72 228 Td (Emergency deployments may bypass Stage 3 with approval from two VP-level sponsors, but must) Tj ET
+BT /F1 10 Tf 72 215 Td (complete full review within 5 business days post-deployment.) Tj ET
+BT /F2 13 Tf 72 182 Td (4. Production Monitoring Requirements) Tj ET
+BT /F1 10 Tf 72 162 Td (All production model serving endpoints must be monitored using the AI Governance Dashboard.) Tj ET
+BT /F1 10 Tf 72 149 Td (The following metrics must be tracked: Request volume and trend via v_serving_endpoint_daily,) Tj ET
+BT /F1 10 Tf 72 136 Td (Token consumption and cost via v_ai_cost_daily, Error rates and latency via) Tj ET
+BT /F1 10 Tf 72 123 Td (v_ai_gateway_daily, User access patterns via v_ai_access_audit.) Tj ET
+BT /F1 10 Tf 72 100 Td (Model owners must configure alerts for: Error rate exceeding 5% over a 1-hour window, Latency) Tj ET
+BT /F1 10 Tf 72 87 Td (exceeding SLA thresholds \(p99 < 2 seconds for chat, < 500ms for embeddings\), Cost exceeding) Tj ET
+BT /F1 10 Tf 72 74 Td (120% of monthly budget allocation, Drift in input distribution detected via Databricks) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 2116 >>
+stream
+BT /F1 10 Tf 72 720 Td (Lakehouse Monitoring.) Tj ET
+BT /F2 13 Tf 72 687 Td (5. Endpoint Utilization and Cost Management) Tj ET
+BT /F1 10 Tf 72 667 Td (The AI Governance team must review endpoint utilization monthly using the) Tj ET
+BT /F1 10 Tf 72 654 Td (v_underutilized_endpoints view. Endpoints classified as 'Idle' \(zero requests in 30 days\)) Tj ET
+BT /F1 10 Tf 72 641 Td (must be decommissioned within 14 days unless a business justification is provided. Endpoints) Tj ET
+BT /F1 10 Tf 72 628 Td (classified as 'Very Low' \(fewer than 100 requests in 30 days\) must provide a utilization) Tj ET
+BT /F1 10 Tf 72 615 Td (improvement plan within 30 days.) Tj ET
+BT /F1 10 Tf 72 592 Td (Provisioned throughput endpoints with utilization below 40% must be converted to) Tj ET
+BT /F1 10 Tf 72 579 Td (pay-per-token or scaled down. The estimated cost savings must be reported to the FinOps team) Tj ET
+BT /F1 10 Tf 72 566 Td (monthly.) Tj ET
+BT /F2 13 Tf 72 533 Td (6. Model Retirement Process) Tj ET
+BT /F1 10 Tf 72 513 Td (Models must be retired when they are replaced by a newer version, no longer serve an active) Tj ET
+BT /F1 10 Tf 72 500 Td (business use case, or fail to meet performance or compliance standards. The retirement) Tj ET
+BT /F1 10 Tf 72 487 Td (process includes: 30-day deprecation notice to all consumers, traffic migration to) Tj ET
+BT /F1 10 Tf 72 474 Td (replacement endpoint, archival of model artifacts and inference logs, deletion of serving) Tj ET
+BT /F1 10 Tf 72 461 Td (endpoint and associated resources, confirmation via the AI Governance Dashboard.) Tj ET
+BT /F2 13 Tf 72 428 Td (7. Responsible AI Requirements) Tj ET
+BT /F1 10 Tf 72 408 Td (All customer-facing AI models must undergo bias testing before deployment. Models used for) Tj ET
+BT /F1 10 Tf 72 395 Td (decisions affecting customers \(credit scoring, service eligibility, pricing\) must provide) Tj ET
+BT /F1 10 Tf 72 382 Td (explainability features. AI Gateway guardrails must be configured to block harmful content,) Tj ET
+BT /F1 10 Tf 72 369 Td (PII leakage, and off-topic responses for all chat-based endpoints.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+8 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000257 00000 n 
+0000004049 00000 n 
+0000004185 00000 n 
+0000006353 00000 n 
+0000006423 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+6498
+%%EOF

@@ -1,0 +1,104 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 3363 >>
+stream
+BT /F2 18 Tf 72 700 Td (AI Security and Access Control Policy) Tj ET
+BT /F1 10 Tf 72 675 Td (MT&T Corporation - Effective Date: January 1, 2026) Tj ET
+BT /F1 10 Tf 72 660 Td (Classification: INTERNAL - CONFIDENTIAL) Tj ET
+BT /F1 10 Tf 72 645 Td (Document Version: 2.1 | Last Updated: March 15, 2026) Tj ET
+0.5 0.5 0.5 RG 72 615 m 540 615 l S
+BT /F2 13 Tf 72 595 Td (1. Purpose) Tj ET
+BT /F1 10 Tf 72 575 Td (This policy defines the security controls and access management requirements for AI systems) Tj ET
+BT /F1 10 Tf 72 562 Td (within MT&T Corporation. It addresses authentication, authorization, network security, data) Tj ET
+BT /F1 10 Tf 72 549 Td (protection, and incident response specific to AI/ML workloads on the Databricks platform.) Tj ET
+BT /F2 13 Tf 72 516 Td (2. Authentication Requirements) Tj ET
+BT /F1 10 Tf 72 496 Td (All AI platform access must use federated authentication through MT&T's enterprise identity) Tj ET
+BT /F1 10 Tf 72 483 Td (provider \(Azure AD/Okta\). Multi-factor authentication is required for all human users) Tj ET
+BT /F1 10 Tf 72 470 Td (accessing AI resources. Service principals must use OAuth machine-to-machine tokens with) Tj ET
+BT /F1 10 Tf 72 457 Td (automatic rotation every 90 days.) Tj ET
+BT /F1 10 Tf 72 434 Td (Personal access tokens \(PATs\) are prohibited for production AI workloads. Development) Tj ET
+BT /F1 10 Tf 72 421 Td (environments may use PATs with a maximum lifetime of 7 days and must be rotated) Tj ET
+BT /F1 10 Tf 72 408 Td (automatically.) Tj ET
+BT /F2 13 Tf 72 375 Td (3. Authorization Framework) Tj ET
+BT /F1 10 Tf 72 355 Td (Access to AI resources follows a role-based access control \(RBAC\) model with the following) Tj ET
+BT /F1 10 Tf 72 342 Td (roles: AI Platform Admin - Full access to all AI resources, endpoint management, and) Tj ET
+BT /F1 10 Tf 72 329 Td (governance views. Model Owner - Manage specific serving endpoints, view usage metrics,) Tj ET
+BT /F1 10 Tf 72 316 Td (configure alerts. Model Consumer - Invoke serving endpoints, view Genie rooms, access AI) Tj ET
+BT /F1 10 Tf 72 303 Td (Gateway. AI Auditor - Read-only access to all governance views, audit logs, and cost reports.) Tj ET
+BT /F1 10 Tf 72 290 Td (Data Scientist - Access to model training resources, experiment tracking, and development) Tj ET
+BT /F1 10 Tf 72 277 Td (endpoints.) Tj ET
+BT /F1 10 Tf 72 254 Td (Unity Catalog fine-grained access controls must be applied to all AI-related tables, views,) Tj ET
+BT /F1 10 Tf 72 241 Td (and models. Row-level and column-level security must be implemented for views containing) Tj ET
+BT /F1 10 Tf 72 228 Td (sensitive user or cost data.) Tj ET
+BT /F2 13 Tf 72 195 Td (4. Unauthorized Access Detection) Tj ET
+BT /F1 10 Tf 72 175 Td (The v_ai_access_audit view must be monitored continuously for unauthorized access patterns.) Tj ET
+BT /F1 10 Tf 72 162 Td (The following events trigger automated alerts and investigation: Any request resulting in) Tj ET
+BT /F1 10 Tf 72 149 Td (HTTP 401 \(Unauthorized\) or 403 \(Forbidden\) response, More than 5 denied access attempts from) Tj ET
+BT /F1 10 Tf 72 136 Td (a single user within 1 hour, Access attempts to decommissioned endpoints, Access from IP) Tj ET
+BT /F1 10 Tf 72 123 Td (addresses outside MT&T's approved network ranges, Service principal access from unexpected) Tj ET
+BT /F1 10 Tf 72 110 Td (workspaces.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 2521 >>
+stream
+BT /F1 10 Tf 72 720 Td (The Security Operations Center \(SOC\) must investigate all high-severity alerts within 4) Tj ET
+BT /F1 10 Tf 72 707 Td (hours. Confirmed unauthorized access attempts must be reported to the CISO within 24 hours.) Tj ET
+BT /F2 13 Tf 72 674 Td (5. AI Gateway Security Controls) Tj ET
+BT /F1 10 Tf 72 654 Td (All external-facing AI endpoints must be routed through Databricks AI Gateway. Required AI) Tj ET
+BT /F1 10 Tf 72 641 Td (Gateway configurations: Rate limiting - Maximum 100 requests per minute per user for chat) Tj ET
+BT /F1 10 Tf 72 628 Td (endpoints, Content filtering - Block PII, hate speech, and harmful content in both input and) Tj ET
+BT /F1 10 Tf 72 615 Td (output, Token limits - Maximum 4096 input tokens and 2048 output tokens per request for) Tj ET
+BT /F1 10 Tf 72 602 Td (standard users, Fallback routing - Primary and fallback model destinations with automatic) Tj ET
+BT /F1 10 Tf 72 589 Td (failover.) Tj ET
+BT /F1 10 Tf 72 566 Td (AI Gateway usage is tracked via the v_ai_gateway_daily view. The security team must review) Tj ET
+BT /F1 10 Tf 72 553 Td (destination_model distribution weekly to ensure only approved models are being accessed.) Tj ET
+BT /F2 13 Tf 72 520 Td (6. Network Security) Tj ET
+BT /F1 10 Tf 72 500 Td (Model serving endpoints handling Confidential or Restricted data must use private endpoints) Tj ET
+BT /F1 10 Tf 72 487 Td (\(AWS PrivateLink\). Public endpoint access requires IP allowlisting. All AI platform traffic) Tj ET
+BT /F1 10 Tf 72 474 Td (must traverse MT&T's security inspection infrastructure. VPC peering for cross-workspace AI) Tj ET
+BT /F1 10 Tf 72 461 Td (data flows must be approved by the Network Security team.) Tj ET
+BT /F2 13 Tf 72 428 Td (7. Incident Response) Tj ET
+BT /F1 10 Tf 72 408 Td (AI-specific security incidents include: Data exfiltration through model serving responses,) Tj ET
+BT /F1 10 Tf 72 395 Td (Prompt injection attacks on foundation model endpoints, Unauthorized model deployment or) Tj ET
+BT /F1 10 Tf 72 382 Td (modification, AI Gateway bypass attempts, Anomalous token consumption indicating abuse.) Tj ET
+BT /F1 10 Tf 72 359 Td (The AI Security Incident Response Plan \(AI-SIRP\) must be followed for all AI-related) Tj ET
+BT /F1 10 Tf 72 346 Td (incidents. The plan is maintained by the CISO office and reviewed quarterly. Post-incident) Tj ET
+BT /F1 10 Tf 72 333 Td (reviews must include analysis of system table data to identify root cause and prevention) Tj ET
+BT /F1 10 Tf 72 320 Td (measures.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+8 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000257 00000 n 
+0000003672 00000 n 
+0000003808 00000 n 
+0000006381 00000 n 
+0000006451 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+6526
+%%EOF

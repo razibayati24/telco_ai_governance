@@ -1,0 +1,9 @@
+{
+  "index_name": "cmegdemos_catalog.ai_governance.policy_chunks_vs_index",
+  "endpoint_name": "mas-b3feefeb-endpoint",
+  "source_table": "cmegdemos_catalog.ai_governance.policy_chunks",
+  "embedding_model": "databricks-gte-large-en",
+  "pipeline_type": "TRIGGERED",
+  "primary_key": "chunk_id",
+  "embedding_column": "chunk_text"
+}
