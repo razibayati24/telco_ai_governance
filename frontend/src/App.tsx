@@ -6,9 +6,7 @@ import {
   Activity,
   Network,
   Heart,
-  MessageSquare,
   LayoutDashboard,
-  BookOpen,
 } from 'lucide-react';
 import Overview from './components/Overview';
 import ModelServing from './components/ModelServing';
@@ -16,8 +14,7 @@ import AIGateway from './components/AIGateway';
 import CostObservatory from './components/CostObservatory';
 import AccessSecurity from './components/AccessSecurity';
 import EndpointHealth from './components/EndpointHealth';
-import GenieQA from './components/GenieQA';
-import PolicyAssistant from './components/PolicyAssistant';
+import ChatPopups from './components/ChatPopups';
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -26,8 +23,6 @@ const tabs = [
   { id: 'cost', label: 'Cost Observatory', icon: DollarSign },
   { id: 'access', label: 'Access & Security', icon: Shield },
   { id: 'health', label: 'Endpoint Health', icon: Heart },
-  { id: 'policy', label: 'Policy Assistant', icon: BookOpen },
-  { id: 'genie', label: 'Genie Q&A', icon: MessageSquare },
 ] as const;
 
 type TabId = (typeof tabs)[number]['id'];
@@ -95,9 +90,10 @@ export default function App() {
         {activeTab === 'cost' && <CostObservatory />}
         {activeTab === 'access' && <AccessSecurity />}
         {activeTab === 'health' && <EndpointHealth />}
-        {activeTab === 'policy' && <PolicyAssistant />}
-        {activeTab === 'genie' && <GenieQA />}
       </main>
+
+      {/* Floating Chat Popups */}
+      <ChatPopups />
     </div>
   );
 }
