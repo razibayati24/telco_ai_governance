@@ -21,31 +21,31 @@ The platform delivers **7 core capabilities** mapped directly to telecom AI gove
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                  Telecom AI Landscape (App)                      │
-│         React + FastAPI + Recharts (Dark Theme)                  │
-├──────────┬──────────┬──────────┬──────────┬──────────┬──────────┤
-│ Cost &   │Perform-  │ Quality  │  Query   │ Security │ Overview │
-│Anomalies │ ance     │ Eval     │  Optim   │  Audit   │          │
-└────┬─────┴────┬─────┴────┬─────┴────┬─────┴────┬─────┴──────────┘
-     │          │          │          │          │
-┌────▼──────────▼──────────▼──────────▼──────────▼────────────────┐
-│              Materialized Delta Tables (30-day)                  │
-│              cmegdemos_catalog.ai_governance.*                   │
-└────┬──────────┬──────────┬──────────┬──────────┬────────────────┘
+  ┌─────────────────────┐   ┌───────────────────────────┐
+  │    Genie Q&A        │   │   Policy Assistant (RAG)   │
+  │    Claude Sonnet 4  │   │   Vector Search +          │
+  │    + SQL Execution  │   │   Claude Sonnet 4          │
+  └────────┬────────────┘   └────────────┬──────────────┘
+           │  Floating chat popups       │
+           │  (available on every screen)│
+┌──────────▼─────────────────────────────▼────────────────┐
+│                  Telecom AI Landscape (App)              │
+│            React + FastAPI + Recharts (Dark Theme)       │
+├──────────┬──────────┬──────────┬──────────┬─────────────┤
+│ Cost &   │Perform-  │ Quality  │  Query   │  Security   │
+│Anomalies │ ance     │ Eval     │  Optim   │  Audit      │
+└────┬─────┴────┬─────┴────┬─────┴────┬─────┴─────┬───────┘
+     │          │          │          │           │
+┌────▼──────────▼──────────▼──────────▼───────────▼───────┐
+│              Materialized Delta Tables (30-day)          │
+│              cmegdemos_catalog.ai_governance.*           │
+└────┬──────────┬──────────┬──────────┬──────────┬────────┘
      │          │          │          │          │
 ┌────▼───┐ ┌───▼────┐ ┌───▼───┐ ┌───▼────┐ ┌───▼──────┐
 │system. │ │system. │ │system.│ │system. │ │system.   │
 │serving │ │ai_     │ │billing│ │access  │ │mlflow /  │
 │        │ │gateway │ │       │ │        │ │query     │
 └────────┘ └────────┘ └───────┘ └────────┘ └──────────┘
-
-  ┌─────────────────┐   ┌─────────────────────────┐
-  │  Genie Q&A      │   │  Policy Assistant (RAG)  │
-  │  Claude Sonnet 4│   │  Vector Search +         │
-  │  + SQL Execution│   │  Claude Sonnet 4         │
-  └─────────────────┘   └─────────────────────────┘
-        Floating chat popups (available on every screen)
 ```
 
 ## System Tables & Materialized Data
