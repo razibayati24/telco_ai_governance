@@ -7,6 +7,20 @@ IS_DATABRICKS_APP = bool(os.environ.get("DATABRICKS_APP_NAME"))
 WAREHOUSE_ID = os.environ.get("DATABRICKS_WAREHOUSE_ID", "9cd919d96b11bf1c")
 CATALOG_SCHEMA = "cmegdemos_catalog.ai_governance"
 
+# All queries hit pre-aggregated materialized tables (30d snapshots).
+# Data refreshes via scheduled job or manual rebuild — not live views.
+TBL_SERVING = f"{CATALOG_SCHEMA}.m_serving_endpoint_daily"
+TBL_ENDPOINTS = f"{CATALOG_SCHEMA}.m_underutilized_endpoints"
+TBL_ACCESS = f"{CATALOG_SCHEMA}.m_ai_access_audit"
+TBL_GATEWAY = f"{CATALOG_SCHEMA}.m_ai_gateway_daily"
+TBL_COST = f"{CATALOG_SCHEMA}.m_ai_cost_daily"
+TBL_GENIE = f"{CATALOG_SCHEMA}.m_assistant_genie_usage"
+TBL_COST_ANOMALIES = f"{CATALOG_SCHEMA}.m_cost_anomalies"
+TBL_MLFLOW_QUALITY = f"{CATALOG_SCHEMA}.m_mlflow_quality_daily"
+TBL_MLFLOW_METRICS = f"{CATALOG_SCHEMA}.m_mlflow_metrics_daily"
+TBL_QUERY_OPT = f"{CATALOG_SCHEMA}.m_query_optimization"
+TBL_EXPENSIVE_QUERIES = f"{CATALOG_SCHEMA}.m_expensive_queries"
+
 
 def get_workspace_client() -> WorkspaceClient:
     """Get workspace client - auto-detects environment."""

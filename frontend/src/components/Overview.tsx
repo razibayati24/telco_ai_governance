@@ -11,23 +11,24 @@ import {
   Legend,
 } from 'recharts';
 import {
-  BarChart3,
-  Zap,
-  Server,
-  ShieldAlert,
   DollarSign,
+  Clock,
+  CheckCircle,
+  XCircle,
+  ShieldAlert,
+  AlertTriangle,
   TrendingUp,
 } from 'lucide-react';
 import { useApi, formatNumber, formatDbu } from '../hooks/useApi';
 import { Loading, ErrorState } from './LoadingState';
 
 interface KPIs {
-  total_requests_30d: number;
-  total_tokens_30d: number;
-  active_endpoints: number;
-  denied_access_30d: number;
   total_cost_dbus_30d: number;
-  total_endpoints: number;
+  avg_latency_ms: number;
+  mlflow_success_rate: number;
+  query_failure_rate: number;
+  denied_access_30d: number;
+  cost_anomalies: number;
 }
 
 interface DailyRequest {
@@ -121,6 +122,16 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
+      {/* Description Banner */}
+      <div className="card bg-gradient-to-r from-db-dark-800 to-db-dark-700 border-db-orange/20">
+        <div className="flex items-start gap-3">
+          <TrendingUp className="w-5 h-5 text-db-orange mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-gray-400 leading-relaxed">
+            An autonomous AI agent that continuously monitors, analyzes, and acts on platform telemetry data to ensure GenAI workloads are cost-effective, high-performing, and properly governed.
+          </p>
+        </div>
+      </div>
+
       {/* KPI Cards */}
       {kLoad ? (
         <Loading label="Loading KPIs..." />
@@ -129,23 +140,28 @@ export default function Overview() {
       ) : kpis ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <KpiCard
-            icon={BarChart3}
-            label="AI Requests (30d)"
-            value={formatNumber(kpis.total_requests_30d)}
+            icon={DollarSign}
+            label="Total AI Cost (30d)"
+            value={formatDbu(kpis.total_cost_dbus_30d) + ' DBUs'}
+            color="bg-amber-600"
+          />
+          <KpiCard
+            icon={Clock}
+            label="Avg Latency"
+            value={(kpis.avg_latency_ms ?? 0).toFixed(0) + 'ms'}
             color="bg-blue-600"
           />
           <KpiCard
-            icon={Zap}
-            label="Tokens Consumed"
-            value={formatNumber(kpis.total_tokens_30d)}
-            color="bg-purple-600"
+            icon={CheckCircle}
+            label="MLflow Success Rate"
+            value={(kpis.mlflow_success_rate ?? 0).toFixed(1) + '%'}
+            color="bg-emerald-600"
           />
           <KpiCard
-            icon={Server}
-            label="Active Endpoints"
-            value={String(kpis.active_endpoints)}
-            color="bg-emerald-600"
-            sublabel={`of ${kpis.total_endpoints} total`}
+            icon={XCircle}
+            label="Query Failure Rate"
+            value={(kpis.query_failure_rate ?? 0).toFixed(2) + '%'}
+            color="bg-purple-600"
           />
           <KpiCard
             icon={ShieldAlert}
@@ -155,17 +171,11 @@ export default function Overview() {
             sublabel="Last 30 days"
           />
           <KpiCard
-            icon={DollarSign}
-            label="AI Cost (DBUs)"
-            value={formatDbu(kpis.total_cost_dbus_30d)}
-            color="bg-amber-600"
-            sublabel="Last 30 days"
-          />
-          <KpiCard
-            icon={TrendingUp}
-            label="Total Endpoints"
-            value={String(kpis.total_endpoints)}
+            icon={AlertTriangle}
+            label="Cost Anomalies"
+            value={String(kpis.cost_anomalies ?? 0)}
             color="bg-db-orange"
+            sublabel="Detected"
           />
         </div>
       ) : null}

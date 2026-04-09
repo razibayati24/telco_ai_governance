@@ -1,34 +1,45 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
-  BarChart3,
-  Shield,
-  DollarSign,
-  Activity,
-  Network,
-  Heart,
   LayoutDashboard,
+  DollarSign,
+  Gauge,
+  FlaskConical,
+  Database,
+  ShieldAlert,
+  RefreshCw,
+  Activity,
 } from 'lucide-react';
 import Overview from './components/Overview';
-import ModelServing from './components/ModelServing';
-import AIGateway from './components/AIGateway';
-import CostObservatory from './components/CostObservatory';
-import AccessSecurity from './components/AccessSecurity';
-import EndpointHealth from './components/EndpointHealth';
+import CostAnomalies from './components/CostAnomalies';
+import PerformanceMonitoring from './components/PerformanceMonitoring';
+import QualityEvaluation from './components/QualityEvaluation';
+import QueryOptimization from './components/QueryOptimization';
+import SecurityAudit from './components/SecurityAudit';
 import ChatPopups from './components/ChatPopups';
+import { clearAllCache } from './hooks/useApi';
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'serving', label: 'Model Serving', icon: BarChart3 },
-  { id: 'gateway', label: 'AI Gateway', icon: Network },
-  { id: 'cost', label: 'Cost Observatory', icon: DollarSign },
-  { id: 'access', label: 'Access & Security', icon: Shield },
-  { id: 'health', label: 'Endpoint Health', icon: Heart },
+  { id: 'cost', label: 'Cost & Anomalies', icon: DollarSign },
+  { id: 'performance', label: 'Performance', icon: Gauge },
+  { id: 'quality', label: 'Quality Evaluation', icon: FlaskConical },
+  { id: 'queries', label: 'Query Optimization', icon: Database },
+  { id: 'security', label: 'Security Audit', icon: ShieldAlert },
 ] as const;
 
 type TabId = (typeof tabs)[number]['id'];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [spinning, setSpinning] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    clearAllCache();
+    setSpinning(true);
+    setRefreshKey((k) => k + 1);
+    setTimeout(() => setSpinning(false), 800);
+  }, []);
 
   return (
     <div className="min-h-screen bg-db-dark-900">
@@ -42,16 +53,26 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-white leading-tight">
-                  AI Governance & Observability
+                  Telecom AI Landscape
                 </h1>
                 <p className="text-[11px] text-gray-500 leading-tight">
-                  MT&T Enterprise AI Platform
+                  AI Agentic FinOps Assistant
                 </p>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-500">Last 30 Days</span>
+            <button
+              onClick={handleRefresh}
+              title="Refresh all data"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white bg-db-dark-700 hover:bg-db-dark-600 border border-db-dark-600 hover:border-db-orange/40 transition-all"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${spinning ? 'animate-spin' : ''}`}
+              />
+              Refresh
+            </button>
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs text-emerald-400">Live</span>
           </div>
@@ -82,14 +103,14 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Content */}
-      <main className="max-w-[1600px] mx-auto px-6 py-6">
+      {/* Content -- refreshKey forces remount to re-fetch after cache clear */}
+      <main key={refreshKey} className="max-w-[1600px] mx-auto px-6 py-6">
         {activeTab === 'overview' && <Overview />}
-        {activeTab === 'serving' && <ModelServing />}
-        {activeTab === 'gateway' && <AIGateway />}
-        {activeTab === 'cost' && <CostObservatory />}
-        {activeTab === 'access' && <AccessSecurity />}
-        {activeTab === 'health' && <EndpointHealth />}
+        {activeTab === 'cost' && <CostAnomalies />}
+        {activeTab === 'performance' && <PerformanceMonitoring />}
+        {activeTab === 'quality' && <QualityEvaluation />}
+        {activeTab === 'queries' && <QueryOptimization />}
+        {activeTab === 'security' && <SecurityAudit />}
       </main>
 
       {/* Floating Chat Popups */}

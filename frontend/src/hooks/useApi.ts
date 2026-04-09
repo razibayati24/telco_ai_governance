@@ -1,4 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+// Global in-memory cache — data stays for the entire session.
+// Only refreshed when the user explicitly clicks a refresh button.
+const cache: Record<string, { data: unknown }> = {};
 
 interface ApiState<T> {
   data: T | null;
@@ -8,33 +12,60 @@ interface ApiState<T> {
 }
 
 export function useApi<T>(endpoint: string): ApiState<T> {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<T | null>(() => {
+    const hit = cache[endpoint];
+    return hit ? (hit.data as T) : null;
+  });
+  const [loading, setLoading] = useState(() => !cache[endpoint]);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
-  const fetchData = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    fetch(endpoint)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((d) => {
-        setData(d);
+  const fetchData = useCallback(
+    (force = false) => {
+      // Use cache unless forced refresh
+      if (!force && cache[endpoint]) {
+        setData(cache[endpoint].data as T);
         setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [endpoint]);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      fetch(endpoint)
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then((d) => {
+          cache[endpoint] = { data: d };
+          if (mountedRef.current) {
+            setData(d);
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          if (mountedRef.current) {
+            setError(err.message);
+            setLoading(false);
+          }
+        });
+    },
+    [endpoint],
+  );
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchData();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch: () => fetchData(true) };
+}
+
+/** Force-refresh all cached data (called from the global refresh button). */
+export function clearAllCache() {
+  Object.keys(cache).forEach((k) => delete cache[k]);
 }
 
 export function formatNumber(num: number | null | undefined): string {
