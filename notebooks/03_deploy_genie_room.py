@@ -15,14 +15,33 @@
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## Configuration
+
+# COMMAND ----------
+
+dbutils.widgets.text("catalog", "", "Unity Catalog Name")
+dbutils.widgets.text("schema", "ai_governance", "Schema Name")
+dbutils.widgets.text("warehouse_id", "", "SQL Warehouse ID")
+
+CATALOG = dbutils.widgets.get("catalog")
+SCHEMA = dbutils.widgets.get("schema")
+WAREHOUSE_ID = dbutils.widgets.get("warehouse_id")
+CATALOG_SCHEMA = f"{CATALOG}.{SCHEMA}"
+
+assert CATALOG, "Please set the 'catalog' widget to your Unity Catalog name"
+assert WAREHOUSE_ID, "Please set the 'warehouse_id' widget to your SQL warehouse ID"
+print(f"Using: {CATALOG_SCHEMA}")
+print(f"Warehouse: {WAREHOUSE_ID}")
+
+# COMMAND ----------
+
 import requests
 import json
 
 # Get workspace context
 host = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiUrl().getOrElse(None)
 token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().getOrElse(None)
-
-WAREHOUSE_ID = "9cd919d96b11bf1c"  # Update to your warehouse ID
 
 # COMMAND ----------
 
@@ -32,12 +51,12 @@ WAREHOUSE_ID = "9cd919d96b11bf1c"  # Update to your warehouse ID
 # COMMAND ----------
 
 tables = sorted([
-    "cmegdemos_catalog.ai_governance.v_serving_endpoint_daily",
-    "cmegdemos_catalog.ai_governance.v_ai_gateway_daily",
-    "cmegdemos_catalog.ai_governance.v_ai_cost_daily",
-    "cmegdemos_catalog.ai_governance.v_assistant_genie_usage",
-    "cmegdemos_catalog.ai_governance.v_underutilized_endpoints",
-    "cmegdemos_catalog.ai_governance.v_ai_access_audit"
+    f"{CATALOG_SCHEMA}.v_serving_endpoint_daily",
+    f"{CATALOG_SCHEMA}.v_ai_gateway_daily",
+    f"{CATALOG_SCHEMA}.v_ai_cost_daily",
+    f"{CATALOG_SCHEMA}.v_assistant_genie_usage",
+    f"{CATALOG_SCHEMA}.v_underutilized_endpoints",
+    f"{CATALOG_SCHEMA}.v_ai_access_audit"
 ])
 
 # Create the Genie space
@@ -57,6 +76,7 @@ space = resp.json()
 space_id = space["space_id"]
 print(f"Created Genie space: {space_id}")
 print(f"URL: {host}/genie/rooms/{space_id}")
+print(f"\n*** Set DATABRICKS_GENIE_SPACE_ID={space_id} in your app.yaml ***")
 
 # COMMAND ----------
 
@@ -68,7 +88,7 @@ print(f"URL: {host}/genie/rooms/{space_id}")
 # Update with tables
 update_payload = {
     "title": "AI Governance Q&A",
-    "description": "Natural language Q&A to monitor AI usage, model serving costs, endpoint utilization, access patterns, and Genie/Assistant activity across the platform. Designed for MT&T AI governance.",
+    "description": "Natural language Q&A to monitor AI usage, model serving costs, endpoint utilization, access patterns, and Genie/Assistant activity across the platform.",
     "warehouse_id": WAREHOUSE_ID,
     "serialized_space": json.dumps({
         "version": "2",

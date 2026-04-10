@@ -16,15 +16,15 @@ The platform delivers **7 core capabilities** mapped directly to telecom AI gove
 | 4 | **Query Optimization** | Identifies expensive queries from agent workloads. Tracks query duration distribution, cache hit rates, data spill volumes, and surfaces the top 10 most expensive queries with user attribution. | Daily | Query Optimization tab |
 | 5 | **Security Auditing** | Unauthorized access detection across AI services (modelServing, mlflow, aiGateway, vectorSearch, aibi). Monitors denied access trends, flags repeat offenders, and tracks access patterns by service. | Continuous / Every 5 min | Security Audit tab |
 | 6 | **Anomaly Detection** | Cost spike detection (>2x rolling 7-day avg), latency anomalies, and quality degradation alerts. Combined with cost analysis in a unified view with visual anomaly markers. | Continuous | Cost & Anomalies tab |
-| 7 | **Natural Language Interface** | Two AI-powered chat assistants available from any screen: **Genie Q&A** (queries live system table data via foundation model + SQL execution) and **Policy Assistant** (RAG-based Q&A over telecom governance policies via Vector Search + Claude Sonnet 4). | On-demand | Floating chat popups |
+| 7 | **Natural Language Interface** | Two AI-powered chat assistants available from any screen: **Genie Q&A** (queries live system table data via foundation model + SQL execution) and **Policy Assistant** (RAG-based Q&A over telecom governance policies via Vector Search + LLM). | On-demand | Floating chat popups |
 
 ## Architecture
 
 ```
   ┌─────────────────────┐   ┌───────────────────────────┐
   │    Genie Q&A        │   │   Policy Assistant (RAG)   │
-  │    Claude Sonnet 4  │   │   Vector Search +          │
-  │    + SQL Execution  │   │   Claude Sonnet 4          │
+  │    LLM Endpoint     │   │   Vector Search +          │
+  │    + SQL Execution  │   │   LLM Endpoint             │
   └────────┬────────────┘   └────────────┬──────────────┘
            │  Floating chat popups       │
            │  (available on every screen)│
@@ -38,7 +38,7 @@ The platform delivers **7 core capabilities** mapped directly to telecom AI gove
      │          │          │          │           │
 ┌────▼──────────▼──────────▼──────────▼───────────▼───────┐
 │              Materialized Delta Tables (30-day)          │
-│              cmegdemos_catalog.ai_governance.*           │
+│              <your_catalog>.ai_governance.*              │
 └────┬──────────┬──────────┬──────────┬──────────┬────────┘
      │          │          │          │          │
 ┌────▼───┐ ┌───▼────┐ ┌───▼───┐ ┌───▼────┐ ┌───▼──────┐
@@ -66,7 +66,7 @@ All queries hit **pre-aggregated materialized Delta tables** (30-day snapshots) 
 | `system.mlflow.run_metrics_history` | ~3.3M | Run metric values over time for drift detection |
 | `system.query.history` | ~50M | Query execution history: duration, bytes read, spill, cache |
 
-### Materialized Tables (in `cmegdemos_catalog.ai_governance`)
+### Materialized Tables (in `<your_catalog>.ai_governance`)
 
 | Table | Source | Used By |
 |---|---|---|
@@ -95,12 +95,10 @@ RAG-based Q&A over **6 telecom-specific governance policy documents**:
 | **CPNI Protection & AI Compliance** | FCC 47 U.S.C. 222, CPNI in AI models, subscriber consent, breach response procedures |
 | **Network Data Governance** | Cell tower data classification, RAN configs, real-time AI constraints, vendor data sharing rules |
 
-Policy documents stored in: `Volumes/cmegdemos_catalog/ai_governance/policy_documents/`
-Vector Search index: `cmegdemos_catalog.ai_governance.policy_chunks_vs_index` (GTE-Large embeddings)
+Policy documents stored in: `Volumes/<your_catalog>/ai_governance/policy_documents/`
+Vector Search index: `<your_catalog>.ai_governance.policy_chunks_vs_index` (GTE-Large embeddings)
 
 ## App Dashboard
-
-**URL**: https://ai-governance-monitor-7474656585748611.aws.databricksapps.com
 
 | Tab | What It Shows |
 |-----|---------------|
@@ -121,48 +119,84 @@ Vector Search index: `cmegdemos_catalog.ai_governance.policy_chunks_vs_index` (G
 - Foundation model serving endpoint (e.g., `databricks-claude-sonnet-4`)
 - Vector Search endpoint
 
-### Deployment Steps
+### Step 1: Configure Environment
 
-1. **Run notebooks in order:**
-   ```
-   01_setup_governance_views.py        -> Creates schema, views, and materialized tables
-   02_setup_policy_knowledge_base.py   -> Creates policy KB, chunks table, Vector Search index
-   03_deploy_genie_room.py             -> Creates Genie room with governance views
-   ```
+Copy `.env.example` and fill in your values:
 
-2. **Deploy the app:**
-   ```bash
-   databricks apps create ai-governance-monitor --profile=<your-profile>
-   databricks apps deploy ai-governance-monitor \
-     --source-code-path /Workspace/Users/<you>/databricks_apps/ai-governance-monitor
-   ```
+```bash
+cp .env.example .env
+```
 
-3. **Configure app resources in `app.yaml`:**
-   - SQL warehouse (CAN_USE)
-   - Serving endpoint for LLM (CAN_QUERY)
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABRICKS_CATALOG` | Yes | Your Unity Catalog name |
+| `DATABRICKS_SCHEMA` | No | Schema name (default: `ai_governance`) |
+| `DATABRICKS_WAREHOUSE_ID` | Yes | SQL Warehouse ID |
+| `DATABRICKS_LLM_ENDPOINT` | Yes | Foundation model endpoint name |
+| `DATABRICKS_VS_ENDPOINT` | Yes | Vector Search endpoint name |
+| `DATABRICKS_GENIE_SPACE_ID` | No | Created by notebook 03 |
+| `DATABRICKS_PROFILE` | No | CLI profile for local dev (default: `DEFAULT`) |
 
-4. **Grant service principal access:**
-   ```sql
-   GRANT USE CATALOG ON CATALOG cmegdemos_catalog TO `<app-sp-uuid>`;
-   GRANT USE SCHEMA ON SCHEMA cmegdemos_catalog.ai_governance TO `<app-sp-uuid>`;
-   GRANT SELECT ON SCHEMA cmegdemos_catalog.ai_governance TO `<app-sp-uuid>`;
-   ```
+### Step 2: Run Notebooks
+
+Run notebooks in order on your Databricks workspace. Each notebook prompts for **catalog** and **schema** via widgets:
+
+```
+01_setup_governance_views.py        -> Creates schema, views, and materialized tables
+02_setup_policy_knowledge_base.py   -> Creates policy KB, chunks table, Vector Search index
+03_deploy_genie_room.py             -> Creates Genie room with governance views
+```
+
+Notebook 03 will output a `GENIE_SPACE_ID` — save it for your `app.yaml`.
+
+### Step 3: Update `app.yaml`
+
+Replace the `${...}` placeholders in `app.yaml` with your actual values:
+
+```yaml
+env:
+  - name: 'DATABRICKS_WAREHOUSE_ID'
+    value: '<your-warehouse-id>'
+  - name: 'DATABRICKS_CATALOG'
+    value: '<your-catalog>'
+  - name: 'DATABRICKS_LLM_ENDPOINT'
+    value: '<your-llm-endpoint>'
+  # ... etc
+resources:
+  - name: sql-warehouse
+    sql_warehouse:
+      id: '<your-warehouse-id>'
+      permission: CAN_USE
+  - name: serving-endpoint
+    serving_endpoint:
+      name: '<your-llm-endpoint>'
+      permission: CAN_QUERY
+```
+
+### Step 4: Deploy the App
+
+```bash
+databricks apps create ai-governance-monitor --profile=<your-profile>
+databricks apps deploy ai-governance-monitor \
+  --source-code-path /Workspace/Users/<you>/databricks_apps/ai-governance-monitor
+```
+
+### Step 5: Grant Service Principal Access
+
+```sql
+GRANT USE CATALOG ON CATALOG <your_catalog> TO `<app-sp-uuid>`;
+GRANT USE SCHEMA ON SCHEMA <your_catalog>.ai_governance TO `<app-sp-uuid>`;
+GRANT SELECT ON SCHEMA <your_catalog>.ai_governance TO `<app-sp-uuid>`;
+```
 
 ### Refreshing Materialized Tables
 
 Tables are 30-day snapshots. Refresh via scheduled Databricks job or manually:
 ```sql
 -- Example: refresh cost table
-CREATE OR REPLACE TABLE cmegdemos_catalog.ai_governance.m_ai_cost_daily AS
+CREATE OR REPLACE TABLE <your_catalog>.ai_governance.m_ai_cost_daily AS
 SELECT ... FROM system.billing.usage WHERE usage_date >= current_date() - INTERVAL 30 DAYS ...
 ```
-
-## Workspace
-
-- **Workspace**: https://fevm-cmegdemos.cloud.databricks.com
-- **Catalog**: `cmegdemos_catalog`
-- **Schema**: `ai_governance`
-- **Warehouse**: `9cd919d96b11bf1c` (Apps & Agents Warehouse, Serverless Pro Large)
 
 ## Tech Stack
 
@@ -171,6 +205,6 @@ SELECT ... FROM system.billing.usage WHERE usage_date >= current_date() - INTERV
 | **Backend** | Python, FastAPI, databricks-sql-connector, databricks-sdk, openai SDK |
 | **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Recharts, Lucide icons |
 | **Data** | Databricks System Tables, Unity Catalog, Delta Lake (materialized tables) |
-| **AI - Genie Q&A** | Claude Sonnet 4 (via Foundation Model API) + live SQL execution |
-| **AI - Policy Assistant** | Vector Search (GTE-Large embeddings) + Claude Sonnet 4 (RAG) |
+| **AI - Genie Q&A** | Foundation Model API + live SQL execution |
+| **AI - Policy Assistant** | Vector Search (GTE-Large embeddings) + Foundation Model (RAG) |
 | **Infrastructure** | Databricks Apps (Serverless), SQL Warehouse (Serverless Pro) |

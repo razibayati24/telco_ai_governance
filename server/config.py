@@ -4,8 +4,18 @@ import os
 from databricks.sdk import WorkspaceClient
 
 IS_DATABRICKS_APP = bool(os.environ.get("DATABRICKS_APP_NAME"))
-WAREHOUSE_ID = os.environ.get("DATABRICKS_WAREHOUSE_ID", "9cd919d96b11bf1c")
-CATALOG_SCHEMA = "cmegdemos_catalog.ai_governance"
+WAREHOUSE_ID = os.environ.get("DATABRICKS_WAREHOUSE_ID", "")
+
+# --- Configurable catalog and schema ---
+CATALOG = os.environ.get("DATABRICKS_CATALOG", "")
+SCHEMA = os.environ.get("DATABRICKS_SCHEMA", "ai_governance")
+CATALOG_SCHEMA = f"{CATALOG}.{SCHEMA}"
+
+# --- AI / LLM settings ---
+LLM_ENDPOINT = os.environ.get("DATABRICKS_LLM_ENDPOINT", "databricks-claude-sonnet-4")
+VS_ENDPOINT = os.environ.get("DATABRICKS_VS_ENDPOINT", "")
+VS_INDEX = os.environ.get("DATABRICKS_VS_INDEX", f"{CATALOG_SCHEMA}.policy_chunks_vs_index")
+GENIE_SPACE_ID = os.environ.get("DATABRICKS_GENIE_SPACE_ID", "")
 
 # All queries hit pre-aggregated materialized tables (30d snapshots).
 # Data refreshes via scheduled job or manual rebuild — not live views.
@@ -26,7 +36,7 @@ def get_workspace_client() -> WorkspaceClient:
     """Get workspace client - auto-detects environment."""
     if IS_DATABRICKS_APP:
         return WorkspaceClient()
-    profile = os.environ.get("DATABRICKS_PROFILE", "fevm-cmegdemos")
+    profile = os.environ.get("DATABRICKS_PROFILE", "DEFAULT")
     return WorkspaceClient(profile=profile)
 
 

@@ -1,15 +1,15 @@
 {
-  "space_id": "01f1336d23c21dbeaf01c8b966940ff8",
+  "space_id": "<GENIE_SPACE_ID>",
   "title": "AI Governance Q&A",
   "description": "Natural language Q&A to monitor AI usage, model serving costs, endpoint utilization, access patterns, and Genie/Assistant activity across the platform.",
-  "warehouse_id": "9cd919d96b11bf1c",
-  "url": "https://fevm-cmegdemos.cloud.databricks.com/genie/rooms/01f1336d23c21dbeaf01c8b966940ff8",
+  "warehouse_id": "<WAREHOUSE_ID>",
+  "url": "https://<WORKSPACE_HOST>/genie/rooms/<GENIE_SPACE_ID>",
   "tables": [
-    "cmegdemos_catalog.ai_governance.v_ai_access_audit",
-    "cmegdemos_catalog.ai_governance.v_ai_cost_daily",
-    "cmegdemos_catalog.ai_governance.v_ai_gateway_daily",
-    "cmegdemos_catalog.ai_governance.v_assistant_genie_usage",
-    "cmegdemos_catalog.ai_governance.v_serving_endpoint_daily",
-    "cmegdemos_catalog.ai_governance.v_underutilized_endpoints"
+    "<CATALOG>.<SCHEMA>.v_ai_access_audit",
+    "<CATALOG>.<SCHEMA>.v_ai_cost_daily",
+    "<CATALOG>.<SCHEMA>.v_ai_gateway_daily",
+    "<CATALOG>.<SCHEMA>.v_assistant_genie_usage",
+    "<CATALOG>.<SCHEMA>.v_serving_endpoint_daily",
+    "<CATALOG>.<SCHEMA>.v_underutilized_endpoints"
   ]
 }

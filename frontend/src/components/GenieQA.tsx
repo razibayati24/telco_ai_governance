@@ -1,6 +1,5 @@
+import { useState, useEffect } from 'react';
 import { ExternalLink, MessageSquare, Sparkles, HelpCircle } from 'lucide-react';
-
-const GENIE_URL = 'https://fevm-cmegdemos.cloud.databricks.com/genie/rooms/01f1336d23c21dbeaf01c8b966940ff8';
 
 const SAMPLE_QUESTIONS = [
   {
@@ -42,6 +41,15 @@ const SAMPLE_QUESTIONS = [
 ];
 
 export default function GenieQA() {
+  const [genieUrl, setGenieUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then((r) => r.json())
+      .then((data) => setGenieUrl(data.genie_url))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Genie Room Embed */}
@@ -52,7 +60,7 @@ export default function GenieQA() {
             <h3 className="text-lg font-semibold text-white">AI Governance Genie</h3>
           </div>
           <a
-            href={GENIE_URL}
+            href={genieUrl || '#'}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 bg-db-orange hover:bg-db-orange-light text-white rounded-lg transition-all duration-200 text-sm font-medium shadow-lg shadow-db-orange/20"
@@ -66,7 +74,7 @@ export default function GenieQA() {
         {/* Try iframe embed */}
         <div className="rounded-lg overflow-hidden border border-db-dark-600 bg-db-dark-900">
           <iframe
-            src={GENIE_URL}
+            src={genieUrl || ''}
             className="w-full border-0"
             style={{ height: '600px' }}
             title="AI Governance Genie"

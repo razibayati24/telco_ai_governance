@@ -15,13 +15,35 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Configuration
+
+# COMMAND ----------
+
+dbutils.widgets.text("catalog", "", "Unity Catalog Name")
+dbutils.widgets.text("schema", "ai_governance", "Schema Name")
+dbutils.widgets.text("vs_endpoint", "", "Vector Search Endpoint Name")
+
+CATALOG = dbutils.widgets.get("catalog")
+SCHEMA = dbutils.widgets.get("schema")
+VS_ENDPOINT = dbutils.widgets.get("vs_endpoint")
+CATALOG_SCHEMA = f"{CATALOG}.{SCHEMA}"
+
+assert CATALOG, "Please set the 'catalog' widget to your Unity Catalog name"
+assert VS_ENDPOINT, "Please set the 'vs_endpoint' widget to your Vector Search endpoint name"
+print(f"Using: {CATALOG_SCHEMA}")
+print(f"VS Endpoint: {VS_ENDPOINT}")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Create Volume for Policy PDFs
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE VOLUME IF NOT EXISTS cmegdemos_catalog.ai_governance.policy_documents
-# MAGIC COMMENT 'AI Governance Policy Documents for Knowledge Assistant';
+spark.sql(f"""
+CREATE VOLUME IF NOT EXISTS {CATALOG_SCHEMA}.policy_documents
+COMMENT 'AI Governance Policy Documents for Knowledge Assistant'
+""")
 
 # COMMAND ----------
 
@@ -30,15 +52,16 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE TABLE IF NOT EXISTS cmegdemos_catalog.ai_governance.policy_chunks (
-# MAGIC   chunk_id BIGINT GENERATED ALWAYS AS IDENTITY,
-# MAGIC   policy_name STRING NOT NULL,
-# MAGIC   chunk_text STRING NOT NULL,
-# MAGIC   source_file STRING
-# MAGIC )
-# MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true)
-# MAGIC COMMENT 'Chunked text from AI governance policy documents for vector search';
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {CATALOG_SCHEMA}.policy_chunks (
+  chunk_id BIGINT GENERATED ALWAYS AS IDENTITY,
+  policy_name STRING NOT NULL,
+  chunk_text STRING NOT NULL,
+  source_file STRING
+)
+TBLPROPERTIES (delta.enableChangeDataFeed = true)
+COMMENT 'Chunked text from AI governance policy documents for vector search'
+""")
 
 # COMMAND ----------
 
@@ -116,7 +139,7 @@ for policy_name, chunks in policies.items():
         rows.append(Row(policy_name=policy_name, chunk_text=chunk_text, source_file=source_file))
 
 df = spark.createDataFrame(rows)
-df.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable("cmegdemos_catalog.ai_governance.policy_chunks")
+df.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{CATALOG_SCHEMA}.policy_chunks")
 
 print(f"Inserted {len(rows)} chunks across {len(policies)} policies")
 
@@ -132,14 +155,12 @@ from databricks.vector_search.client import VectorSearchClient
 
 vsc = VectorSearchClient()
 
-# Use an existing VS endpoint or create one
-VS_ENDPOINT = "mas-b3feefeb-endpoint"
-INDEX_NAME = "cmegdemos_catalog.ai_governance.policy_chunks_vs_index"
+INDEX_NAME = f"{CATALOG_SCHEMA}.policy_chunks_vs_index"
 
 try:
     vsc.create_delta_sync_index(
         endpoint_name=VS_ENDPOINT,
-        source_table_name="cmegdemos_catalog.ai_governance.policy_chunks",
+        source_table_name=f"{CATALOG_SCHEMA}.policy_chunks",
         index_name=INDEX_NAME,
         pipeline_type="TRIGGERED",
         primary_key="chunk_id",

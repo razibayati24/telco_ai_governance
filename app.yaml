@@ -1,15 +1,25 @@
 command: ['python', 'app.py']
 env:
   - name: 'DATABRICKS_WAREHOUSE_ID'
-    value: '9cd919d96b11bf1c'
+    value: '${WAREHOUSE_ID}'          # Replace with your SQL warehouse ID
+  - name: 'DATABRICKS_CATALOG'
+    value: '${CATALOG}'               # Replace with your Unity Catalog name
+  - name: 'DATABRICKS_SCHEMA'
+    value: 'ai_governance'            # Change if using a different schema name
+  - name: 'DATABRICKS_LLM_ENDPOINT'
+    value: '${LLM_ENDPOINT}'          # Foundation model serving endpoint name
+  - name: 'DATABRICKS_VS_ENDPOINT'
+    value: '${VS_ENDPOINT}'           # Vector Search endpoint name
+  - name: 'DATABRICKS_GENIE_SPACE_ID'
+    value: '${GENIE_SPACE_ID}'        # Created by notebook 03 (leave blank to skip Genie)
   - name: 'NODE_ENV'
     value: 'production'
 resources:
   - name: sql-warehouse
     sql_warehouse:
-      id: 9cd919d96b11bf1c
+      id: '${WAREHOUSE_ID}'           # Replace with your SQL warehouse ID
       permission: CAN_USE
   - name: serving-endpoint
     serving_endpoint:
-      name: databricks-claude-sonnet-4
+      name: '${LLM_ENDPOINT}'         # Replace with your foundation model endpoint name
       permission: CAN_QUERY

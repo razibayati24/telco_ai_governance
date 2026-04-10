@@ -16,13 +16,32 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Configuration
+# MAGIC Set your catalog and schema names below. These will be used throughout the notebook.
+
+# COMMAND ----------
+
+dbutils.widgets.text("catalog", "", "Unity Catalog Name")
+dbutils.widgets.text("schema", "ai_governance", "Schema Name")
+
+CATALOG = dbutils.widgets.get("catalog")
+SCHEMA = dbutils.widgets.get("schema")
+CATALOG_SCHEMA = f"{CATALOG}.{SCHEMA}"
+
+assert CATALOG, "Please set the 'catalog' widget to your Unity Catalog name"
+print(f"Using: {CATALOG_SCHEMA}")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Create Schema
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE SCHEMA IF NOT EXISTS cmegdemos_catalog.ai_governance
-# MAGIC COMMENT 'AI Governance & Observability views for monitoring AI usage across the platform';
+spark.sql(f"""
+CREATE SCHEMA IF NOT EXISTS {CATALOG_SCHEMA}
+COMMENT 'AI Governance & Observability views for monitoring AI usage across the platform'
+""")
 
 # COMMAND ----------
 
@@ -32,25 +51,26 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE VIEW cmegdemos_catalog.ai_governance.v_serving_endpoint_daily AS
-# MAGIC SELECT
-# MAGIC   date_trunc('day', eu.request_time) AS request_date,
-# MAGIC   se.endpoint_name,
-# MAGIC   se.entity_type,
-# MAGIC   se.entity_name,
-# MAGIC   se.task,
-# MAGIC   eu.requester,
-# MAGIC   eu.status_code,
-# MAGIC   COUNT(*) AS request_count,
-# MAGIC   SUM(eu.input_token_count) AS total_input_tokens,
-# MAGIC   SUM(eu.output_token_count) AS total_output_tokens,
-# MAGIC   SUM(eu.input_token_count + eu.output_token_count) AS total_tokens,
-# MAGIC   SUM(CASE WHEN eu.status_code >= 400 THEN 1 ELSE 0 END) AS error_count,
-# MAGIC   ROUND(SUM(CASE WHEN eu.status_code >= 400 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS error_rate_pct
-# MAGIC FROM system.serving.endpoint_usage eu
-# MAGIC JOIN system.serving.served_entities se ON eu.served_entity_id = se.served_entity_id
-# MAGIC GROUP BY ALL;
+spark.sql(f"""
+CREATE OR REPLACE VIEW {CATALOG_SCHEMA}.v_serving_endpoint_daily AS
+SELECT
+  date_trunc('day', eu.request_time) AS request_date,
+  se.endpoint_name,
+  se.entity_type,
+  se.entity_name,
+  se.task,
+  eu.requester,
+  eu.status_code,
+  COUNT(*) AS request_count,
+  SUM(eu.input_token_count) AS total_input_tokens,
+  SUM(eu.output_token_count) AS total_output_tokens,
+  SUM(eu.input_token_count + eu.output_token_count) AS total_tokens,
+  SUM(CASE WHEN eu.status_code >= 400 THEN 1 ELSE 0 END) AS error_count,
+  ROUND(SUM(CASE WHEN eu.status_code >= 400 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS error_rate_pct
+FROM system.serving.endpoint_usage eu
+JOIN system.serving.served_entities se ON eu.served_entity_id = se.served_entity_id
+GROUP BY ALL
+""")
 
 # COMMAND ----------
 
@@ -60,27 +80,28 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE VIEW cmegdemos_catalog.ai_governance.v_ai_gateway_daily AS
-# MAGIC SELECT
-# MAGIC   date_trunc('day', event_time) AS request_date,
-# MAGIC   endpoint_name,
-# MAGIC   destination_type,
-# MAGIC   destination_name,
-# MAGIC   destination_model,
-# MAGIC   requester,
-# MAGIC   requester_type,
-# MAGIC   api_type,
-# MAGIC   status_code,
-# MAGIC   COUNT(*) AS request_count,
-# MAGIC   SUM(input_tokens) AS total_input_tokens,
-# MAGIC   SUM(output_tokens) AS total_output_tokens,
-# MAGIC   SUM(total_tokens) AS total_tokens,
-# MAGIC   AVG(latency_ms) AS avg_latency_ms,
-# MAGIC   AVG(time_to_first_byte_ms) AS avg_ttfb_ms,
-# MAGIC   SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) AS error_count
-# MAGIC FROM system.ai_gateway.usage
-# MAGIC GROUP BY ALL;
+spark.sql(f"""
+CREATE OR REPLACE VIEW {CATALOG_SCHEMA}.v_ai_gateway_daily AS
+SELECT
+  date_trunc('day', event_time) AS request_date,
+  endpoint_name,
+  destination_type,
+  destination_name,
+  destination_model,
+  requester,
+  requester_type,
+  api_type,
+  status_code,
+  COUNT(*) AS request_count,
+  SUM(input_tokens) AS total_input_tokens,
+  SUM(output_tokens) AS total_output_tokens,
+  SUM(total_tokens) AS total_tokens,
+  AVG(latency_ms) AS avg_latency_ms,
+  AVG(time_to_first_byte_ms) AS avg_ttfb_ms,
+  SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) AS error_count
+FROM system.ai_gateway.usage
+GROUP BY ALL
+""")
 
 # COMMAND ----------
 
@@ -90,24 +111,25 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE VIEW cmegdemos_catalog.ai_governance.v_ai_cost_daily AS
-# MAGIC SELECT
-# MAGIC   usage_date,
-# MAGIC   sku_name,
-# MAGIC   CASE
-# MAGIC     WHEN sku_name LIKE '%ANTHROPIC%' THEN 'Anthropic Model Serving'
-# MAGIC     WHEN sku_name LIKE '%OPENAI%' THEN 'OpenAI Model Serving'
-# MAGIC     WHEN sku_name LIKE '%GEMINI%' THEN 'Gemini Model Serving'
-# MAGIC     WHEN sku_name LIKE '%MODEL_TRAINING%' THEN 'Model Training'
-# MAGIC     WHEN sku_name LIKE '%REAL_TIME_INFERENCE%' THEN 'Real-Time Inference'
-# MAGIC     ELSE 'Other AI'
-# MAGIC   END AS cost_category,
-# MAGIC   SUM(usage_quantity) AS total_dbus
-# MAGIC FROM system.billing.usage
-# MAGIC WHERE sku_name LIKE '%ANTHROPIC%' OR sku_name LIKE '%OPENAI%' OR sku_name LIKE '%GEMINI%'
-# MAGIC    OR sku_name LIKE '%MODEL_TRAINING%' OR sku_name LIKE '%REAL_TIME_INFERENCE%'
-# MAGIC GROUP BY ALL;
+spark.sql(f"""
+CREATE OR REPLACE VIEW {CATALOG_SCHEMA}.v_ai_cost_daily AS
+SELECT
+  usage_date,
+  sku_name,
+  CASE
+    WHEN sku_name LIKE '%ANTHROPIC%' THEN 'Anthropic Model Serving'
+    WHEN sku_name LIKE '%OPENAI%' THEN 'OpenAI Model Serving'
+    WHEN sku_name LIKE '%GEMINI%' THEN 'Gemini Model Serving'
+    WHEN sku_name LIKE '%MODEL_TRAINING%' THEN 'Model Training'
+    WHEN sku_name LIKE '%REAL_TIME_INFERENCE%' THEN 'Real-Time Inference'
+    ELSE 'Other AI'
+  END AS cost_category,
+  SUM(usage_quantity) AS total_dbus
+FROM system.billing.usage
+WHERE sku_name LIKE '%ANTHROPIC%' OR sku_name LIKE '%OPENAI%' OR sku_name LIKE '%GEMINI%'
+   OR sku_name LIKE '%MODEL_TRAINING%' OR sku_name LIKE '%REAL_TIME_INFERENCE%'
+GROUP BY ALL
+""")
 
 # COMMAND ----------
 
@@ -117,15 +139,16 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE VIEW cmegdemos_catalog.ai_governance.v_assistant_genie_usage AS
-# MAGIC SELECT
-# MAGIC   date_trunc('day', event_time) AS event_date,
-# MAGIC   initiated_by,
-# MAGIC   user_agent,
-# MAGIC   COUNT(*) AS event_count
-# MAGIC FROM system.access.assistant_events
-# MAGIC GROUP BY ALL;
+spark.sql(f"""
+CREATE OR REPLACE VIEW {CATALOG_SCHEMA}.v_assistant_genie_usage AS
+SELECT
+  date_trunc('day', event_time) AS event_date,
+  initiated_by,
+  user_agent,
+  COUNT(*) AS event_count
+FROM system.access.assistant_events
+GROUP BY ALL
+""")
 
 # COMMAND ----------
 
@@ -135,37 +158,38 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE VIEW cmegdemos_catalog.ai_governance.v_underutilized_endpoints AS
-# MAGIC SELECT
-# MAGIC   se.endpoint_name,
-# MAGIC   se.entity_type,
-# MAGIC   se.entity_name,
-# MAGIC   se.task,
-# MAGIC   se.created_by,
-# MAGIC   se.change_time AS last_config_change,
-# MAGIC   COALESCE(u.total_requests_30d, 0) AS total_requests_30d,
-# MAGIC   COALESCE(u.total_tokens_30d, 0) AS total_tokens_30d,
-# MAGIC   COALESCE(u.unique_users_30d, 0) AS unique_users_30d,
-# MAGIC   u.last_request_time,
-# MAGIC   CASE
-# MAGIC     WHEN COALESCE(u.total_requests_30d, 0) = 0 THEN 'Idle'
-# MAGIC     WHEN COALESCE(u.total_requests_30d, 0) < 100 THEN 'Very Low'
-# MAGIC     WHEN COALESCE(u.total_requests_30d, 0) < 1000 THEN 'Low'
-# MAGIC     WHEN COALESCE(u.total_requests_30d, 0) < 10000 THEN 'Moderate'
-# MAGIC     ELSE 'Active'
-# MAGIC   END AS utilization_tier
-# MAGIC FROM system.serving.served_entities se
-# MAGIC LEFT JOIN (
-# MAGIC   SELECT served_entity_id, COUNT(*) AS total_requests_30d,
-# MAGIC     SUM(input_token_count + output_token_count) AS total_tokens_30d,
-# MAGIC     COUNT(DISTINCT requester) AS unique_users_30d,
-# MAGIC     MAX(request_time) AS last_request_time
-# MAGIC   FROM system.serving.endpoint_usage
-# MAGIC   WHERE request_time >= current_date() - INTERVAL 30 DAYS
-# MAGIC   GROUP BY served_entity_id
-# MAGIC ) u ON se.served_entity_id = u.served_entity_id
-# MAGIC WHERE se.endpoint_delete_time IS NULL;
+spark.sql(f"""
+CREATE OR REPLACE VIEW {CATALOG_SCHEMA}.v_underutilized_endpoints AS
+SELECT
+  se.endpoint_name,
+  se.entity_type,
+  se.entity_name,
+  se.task,
+  se.created_by,
+  se.change_time AS last_config_change,
+  COALESCE(u.total_requests_30d, 0) AS total_requests_30d,
+  COALESCE(u.total_tokens_30d, 0) AS total_tokens_30d,
+  COALESCE(u.unique_users_30d, 0) AS unique_users_30d,
+  u.last_request_time,
+  CASE
+    WHEN COALESCE(u.total_requests_30d, 0) = 0 THEN 'Idle'
+    WHEN COALESCE(u.total_requests_30d, 0) < 100 THEN 'Very Low'
+    WHEN COALESCE(u.total_requests_30d, 0) < 1000 THEN 'Low'
+    WHEN COALESCE(u.total_requests_30d, 0) < 10000 THEN 'Moderate'
+    ELSE 'Active'
+  END AS utilization_tier
+FROM system.serving.served_entities se
+LEFT JOIN (
+  SELECT served_entity_id, COUNT(*) AS total_requests_30d,
+    SUM(input_token_count + output_token_count) AS total_tokens_30d,
+    COUNT(DISTINCT requester) AS unique_users_30d,
+    MAX(request_time) AS last_request_time
+  FROM system.serving.endpoint_usage
+  WHERE request_time >= current_date() - INTERVAL 30 DAYS
+  GROUP BY served_entity_id
+) u ON se.served_entity_id = u.served_entity_id
+WHERE se.endpoint_delete_time IS NULL
+""")
 
 # COMMAND ----------
 
@@ -175,21 +199,22 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE VIEW cmegdemos_catalog.ai_governance.v_ai_access_audit AS
-# MAGIC SELECT
-# MAGIC   date_trunc('day', event_time) AS event_date,
-# MAGIC   user_identity.email AS user_email,
-# MAGIC   action_name,
-# MAGIC   service_name,
-# MAGIC   source_ip_address,
-# MAGIC   response.status_code AS status_code,
-# MAGIC   CASE WHEN response.status_code >= 400 THEN true ELSE false END AS is_denied,
-# MAGIC   COUNT(*) AS event_count
-# MAGIC FROM system.access.audit
-# MAGIC WHERE service_name IN ('modelServing', 'mlflow', 'aiGateway', 'vectorSearch', 'aibi')
-# MAGIC   AND event_time >= current_date() - INTERVAL 90 DAYS
-# MAGIC GROUP BY ALL;
+spark.sql(f"""
+CREATE OR REPLACE VIEW {CATALOG_SCHEMA}.v_ai_access_audit AS
+SELECT
+  date_trunc('day', event_time) AS event_date,
+  user_identity.email AS user_email,
+  action_name,
+  service_name,
+  source_ip_address,
+  response.status_code AS status_code,
+  CASE WHEN response.status_code >= 400 THEN true ELSE false END AS is_denied,
+  COUNT(*) AS event_count
+FROM system.access.audit
+WHERE service_name IN ('modelServing', 'mlflow', 'aiGateway', 'vectorSearch', 'aibi')
+  AND event_time >= current_date() - INTERVAL 90 DAYS
+GROUP BY ALL
+""")
 
 # COMMAND ----------
 
@@ -199,15 +224,16 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC SELECT 'v_serving_endpoint_daily' as view_name, count(*) as row_count FROM cmegdemos_catalog.ai_governance.v_serving_endpoint_daily
-# MAGIC UNION ALL
-# MAGIC SELECT 'v_ai_gateway_daily', count(*) FROM cmegdemos_catalog.ai_governance.v_ai_gateway_daily
-# MAGIC UNION ALL
-# MAGIC SELECT 'v_ai_cost_daily', count(*) FROM cmegdemos_catalog.ai_governance.v_ai_cost_daily
-# MAGIC UNION ALL
-# MAGIC SELECT 'v_assistant_genie_usage', count(*) FROM cmegdemos_catalog.ai_governance.v_assistant_genie_usage
-# MAGIC UNION ALL
-# MAGIC SELECT 'v_underutilized_endpoints', count(*) FROM cmegdemos_catalog.ai_governance.v_underutilized_endpoints
-# MAGIC UNION ALL
-# MAGIC SELECT 'v_ai_access_audit', count(*) FROM cmegdemos_catalog.ai_governance.v_ai_access_audit;
+spark.sql(f"""
+SELECT 'v_serving_endpoint_daily' as view_name, count(*) as row_count FROM {CATALOG_SCHEMA}.v_serving_endpoint_daily
+UNION ALL
+SELECT 'v_ai_gateway_daily', count(*) FROM {CATALOG_SCHEMA}.v_ai_gateway_daily
+UNION ALL
+SELECT 'v_ai_cost_daily', count(*) FROM {CATALOG_SCHEMA}.v_ai_cost_daily
+UNION ALL
+SELECT 'v_assistant_genie_usage', count(*) FROM {CATALOG_SCHEMA}.v_assistant_genie_usage
+UNION ALL
+SELECT 'v_underutilized_endpoints', count(*) FROM {CATALOG_SCHEMA}.v_underutilized_endpoints
+UNION ALL
+SELECT 'v_ai_access_audit', count(*) FROM {CATALOG_SCHEMA}.v_ai_access_audit
+""").display()

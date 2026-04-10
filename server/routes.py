@@ -10,6 +10,8 @@ from server.config import (
     TBL_SERVING, TBL_ENDPOINTS, TBL_ACCESS, TBL_GATEWAY, TBL_COST, TBL_GENIE,
     TBL_COST_ANOMALIES, TBL_MLFLOW_QUALITY, TBL_MLFLOW_METRICS,
     TBL_QUERY_OPT, TBL_EXPENSIVE_QUERIES,
+    LLM_ENDPOINT, VS_ENDPOINT as VS_ENDPOINT_NAME, VS_INDEX as VS_INDEX_NAME,
+    GENIE_SPACE_ID as GENIE_SPACE_ID_CFG,
 )
 from server.db import execute_query
 
@@ -622,11 +624,26 @@ def get_genie_top_users():
 
 
 # ---------------------------------------------------------------------------
+# Frontend Config (dynamic workspace URLs)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/config")
+def get_frontend_config():
+    """Expose workspace-specific config to the frontend."""
+    host = get_databricks_host()
+    return {
+        "genie_url": f"{host}/genie/rooms/{GENIE_SPACE_ID}" if GENIE_SPACE_ID else None,
+        "workspace_host": host,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Knowledge Assistant (Policy RAG)
 # ---------------------------------------------------------------------------
 
-VS_INDEX = "cmegdemos_catalog.ai_governance.policy_chunks_vs_index"
-VS_ENDPOINT = "mas-b3feefeb-endpoint"
+VS_INDEX = VS_INDEX_NAME
+VS_ENDPOINT = VS_ENDPOINT_NAME
 
 
 class KAQuery(BaseModel):
@@ -686,7 +703,7 @@ def _generate_answer(question: str, context_chunks: list[dict]) -> str:
     ])
 
     response = client.chat.completions.create(
-        model="databricks-claude-sonnet-4",
+        model=LLM_ENDPOINT,
         messages=[
             {"role": "system", "content": (
                 "You are the Telecom AI Governance Policy Assistant. Answer questions about "
@@ -736,7 +753,7 @@ def get_policy_list():
 # Genie Room In-App Chat (API proxy)
 # ---------------------------------------------------------------------------
 
-GENIE_SPACE_ID = "01f1336d23c21dbeaf01c8b966940ff8"
+GENIE_SPACE_ID = GENIE_SPACE_ID_CFG
 
 
 class GenieQuery(BaseModel):
@@ -757,7 +774,7 @@ def genie_ask(query: GenieQuery):
         # Use foundation model to generate SQL and answer
         client = OpenAI(base_url=f"{host}/serving-endpoints", api_key=token)
 
-        table_context = """Available tables in cmegdemos_catalog.ai_governance (all pre-aggregated, 30-day window):
+        table_context = f"""Available tables in {CATALOG_SCHEMA} (all pre-aggregated, 30-day window):
 
 1. m_serving_endpoint_daily: request_date, endpoint_name, entity_type (FOUNDATION_MODEL/CUSTOM_MODEL/EXTERNAL_MODEL), entity_name, task, requester, status_code, request_count, total_input_tokens, total_output_tokens, total_tokens, error_count, error_rate_pct
 
@@ -776,7 +793,7 @@ def genie_ask(query: GenieQuery):
 8. m_query_optimization: query_date, executed_by, statement_type, compute_type, warehouse_id, client_application, query_count, avg_duration_ms, max_duration_ms, total_duration_ms, avg_exec_ms, avg_compile_ms, total_read_bytes, total_read_rows, total_spill_bytes, succeeded, failed, cache_hits"""
 
         response = client.chat.completions.create(
-            model="databricks-claude-sonnet-4",
+            model=LLM_ENDPOINT,
             messages=[
                 {"role": "system", "content": f"""You are an AI FinOps analyst for the Telecom AI Landscape platform.
 
