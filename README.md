@@ -139,15 +139,21 @@ cp .env.example .env
 
 ### Step 2: Run Notebooks
 
-Run notebooks in order on your Databricks workspace. Each notebook prompts for **catalog** and **schema** via widgets:
+Run notebooks **in order** on your Databricks workspace. Each notebook prompts for **catalog** and **schema** via widgets:
 
 ```
-01_setup_governance_views.py        -> Creates schema, views, and materialized tables
+01_setup_governance_views.py        -> Creates schema and v_* governance views on system tables
 02_setup_policy_knowledge_base.py   -> Creates policy KB, chunks table, Vector Search index
 03_deploy_genie_room.py             -> Creates Genie room with governance views
+04_materialize_app_tables.py        -> Creates the 11 m_* Delta tables the app reads from
+                                       (30-day rolling window; re-run daily to refresh)
 ```
 
 Notebook 03 will output a `GENIE_SPACE_ID` — save it for your `app.yaml`.
+
+**Important:** The app (`server/config.py`) queries the `m_*` materialized tables, *not* the `v_*`
+views. Notebook 04 is **required** on a fresh workspace — skipping it will cause every dashboard tab
+to return empty or error. To keep data fresh, schedule notebook 04 on a daily Lakeflow job.
 
 ### Step 3: Update `app.yaml`
 
@@ -191,12 +197,11 @@ GRANT SELECT ON SCHEMA <your_catalog>.ai_governance TO `<app-sp-uuid>`;
 
 ### Refreshing Materialized Tables
 
-Tables are 30-day snapshots. Refresh via scheduled Databricks job or manually:
-```sql
--- Example: refresh cost table
-CREATE OR REPLACE TABLE <your_catalog>.ai_governance.m_ai_cost_daily AS
-SELECT ... FROM system.billing.usage WHERE usage_date >= current_date() - INTERVAL 30 DAYS ...
-```
+All 11 `m_*` tables are 30-day snapshots built by `notebooks/04_materialize_app_tables.py`.
+To refresh, simply re-run that notebook — each cell is an idempotent `CREATE OR REPLACE TABLE`.
+
+Recommended: schedule notebook 04 as a daily Lakeflow Job so dashboards always show the last 30 days.
+The `window_days` widget lets you override the rolling window (default 30).
 
 ## Tech Stack
 
