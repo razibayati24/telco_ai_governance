@@ -50,6 +50,22 @@ VS_INDEX = os.environ.get(
 EMBEDDING_MODEL = os.environ.get("DATABRICKS_EMBEDDING_MODEL", "databricks-gte-large-en")
 GENIE_SPACE_ID = os.environ.get("DATABRICKS_GENIE_SPACE_ID", "")
 
+# Multi-Agent Supervisor (Agent Bricks) endpoint name.  Resource-bound via the
+# `mas-endpoint` resource in app.yaml.  Falls back to the value baked into
+# template.config.json["mas"]["endpoint_name"] (usually empty for the open
+# template).  When unset, /api/agent/ask transparently degrades to the
+# Foundation-Model + Genie SQL fallback so the chat tab still answers.
+MAS_ENDPOINT_NAME = os.environ.get(
+    "DATABRICKS_MAS_ENDPOINT",
+    os.environ.get("MAS_ENDPOINT_NAME", ""),
+)
+
+# Optional purpose-specific Genie spaces used by the AI Ops Explorer agent.
+# Currently informational only — the supervisor itself owns Genie routing —
+# but exposed here so a deployer can wire them through DABs.
+FINOPS_GENIE_SPACE_ID = os.environ.get("DATABRICKS_FINOPS_GENIE_SPACE_ID", "")
+AI_OPS_GENIE_SPACE_ID = os.environ.get("DATABRICKS_AI_OPS_GENIE_SPACE_ID", "")
+
 # ---------------------------------------------------------------------------
 # Materialized table names
 # ---------------------------------------------------------------------------
@@ -135,6 +151,21 @@ _DEFAULT_TEMPLATE_CONFIG: Dict[str, Any] = {
     },
     "deployment": {"app_name": "ai-governance-monitor", "resource_keys": {}},
     "dashboard": {"window_days": 30, "tabs": []},
+    "agents": {
+        "app_name": "{brand_name} AI Governance",
+        "app_subtitle": (
+            "FinOps & Responsible-AI Intelligence Across {brand_name} Bricks"
+        ),
+        "app_icon": "\u2B22",
+        "powered_by": "Databricks Agent Bricks",
+        "placeholder": (
+            "Ask about AI vendor contracts, spend, latency SLAs, or governance clauses\u2026"
+        ),
+        "sidebar": {},
+        "demo_paths": [],
+        "name_mappings": [],
+    },
+    "mas": {"endpoint_name": ""},
 }
 
 
@@ -194,6 +225,62 @@ def get_app_title() -> str:
 
 def get_app_subtitle() -> str:
     return load_template_config()["app"]["subtitle"]
+
+
+def get_agent_config() -> Dict[str, Any]:
+    """Return a brand-substituted view of the Multi-Agent Supervisor sidebar
+    config consumed by the Chat tab and ``_normalize_agent_name``.
+
+    The raw block lives under ``agents`` in ``template.config.json``.  Values
+    that contain ``{brand_name}`` are formatted here so the React side never
+    sees template tokens.
+    """
+    cfg = load_template_config()
+    raw = cfg.get("agents", {}) or {}
+    brand_name = get_brand_name()
+
+    def _fmt(s: Any) -> Any:
+        if isinstance(s, str):
+            try:
+                return s.format(brand_name=brand_name)
+            except (KeyError, IndexError):
+                return s
+        return s
+
+    sidebar = {
+        key: {
+            "label": _fmt(meta.get("label", key)),
+            "color": meta.get("color", "#999999"),
+            "description": _fmt(meta.get("description", "")),
+        }
+        for key, meta in (raw.get("sidebar") or {}).items()
+    }
+
+    demo_paths = []
+    for path in raw.get("demo_paths", []) or []:
+        demo_paths.append(
+            {
+                "title": _fmt(path.get("title", "")),
+                "icon": path.get("icon", "\u25CF"),
+                "questions": [_fmt(q) for q in path.get("questions", [])],
+            }
+        )
+
+    name_mappings = list(raw.get("name_mappings", []) or [])
+
+    return {
+        "app_name": _fmt(raw.get("app_name", "AI Governance")),
+        "app_subtitle": _fmt(raw.get("app_subtitle", "")),
+        "app_icon": raw.get("app_icon", "\u2B22"),
+        "powered_by": _fmt(raw.get("powered_by", "Databricks Agent Bricks")),
+        "placeholder": _fmt(raw.get("placeholder", "Ask the supervisor\u2026")),
+        # The Chat tab consumes the sidebar under the legacy key `agents`
+        # (matching the deployed app's response shape) so existing TSX
+        # iterates `Object.entries(config.agents)` unchanged.
+        "agents": sidebar,
+        "demo_paths": demo_paths,
+        "name_mappings": name_mappings,
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -80,6 +80,8 @@ notebooks/04_materialize_app_tables.py
    widgets: catalog, schema, window_days
 notebooks/03_deploy_genie_room.py     # optional, sets up Genie
    widgets: catalog, schema, warehouse_id, brand_name
+notebooks/05_setup_super_user_masking.py   # optional, dynamic masks on m_* tables
+   widgets: catalog, schema, super_user_group, email_domain
 ```
 
 Pass the same `catalog` / `schema` / `brand_name` you set in `.env`. The brand
@@ -91,16 +93,31 @@ chunks get replaced with the value of `brand_name` at notebook run time.
 
 ---
 
-## Step 3 — (Optional) Create the super-user account group
+## Step 3 — (Optional) Set up super-user masking
 
-Only required if you want a group of users to bypass dynamic data masking.
+If you want a group of users (e.g. AI council, governance leads) to see
+*unmasked* email / IP / free-text values while everyone else sees masked
+values, run notebook 05 after notebook 04.
 
 1. **Account console** → Settings → Identity → Groups → Create group
 2. Name it the same value as `SUPER_USER_GROUP_NAME` in `.env`
-3. Add yourself + any other operators
-4. Assign the group to your workspace (Settings → Identity & Access)
+   (default pattern: `<brand_lowercase>_ai_gov_super_users`).
+3. Add yourself + any other operators.
+4. Assign the group to your workspace (Settings → Identity & Access).
 5. Grant the group `USE CATALOG` / `USE SCHEMA` / `SELECT` on the governance
-   schema, plus permission to read the unmasked source views
+   schema.
+6. Run **`notebooks/05_setup_super_user_masking.py`** with widgets:
+   - `catalog`, `schema` — must match notebook 04
+   - `super_user_group` — same as `SUPER_USER_GROUP_NAME`
+   - `email_domain` — e.g. `acme.com`
+
+   The notebook creates three UDFs (`mask_email`, `mask_ip`, `mask_text`) in
+   the same schema and applies column masks to the `m_*` tables (user_email,
+   source_ip_address, requester, executed_by, statement_preview, etc.).
+
+To remove masking later, run
+`ALTER TABLE <table> ALTER COLUMN <col> DROP MASK;` on each binding listed
+at the top of notebook 05.
 
 ---
 
@@ -141,14 +158,43 @@ on top of the contract / policy docs:
 
 ---
 
-## Step 6 — Multi-Agent Supervisor (Agent Bricks UI, optional)
+## Step 6 — Multi-Agent Supervisor (Chat tab backend)
 
-Agent Bricks Multi-Agent Supervisor is UI-only today. Skip if you're not
-adding agentic features beyond what this app already ships.
+The **Chat tab** of the app talks to a Multi-Agent Supervisor (MAS) at
+`/api/agent/ask`.  When `DATABRICKS_MAS_ENDPOINT` is set, the chat thread is
+forwarded to that serving endpoint; otherwise the app falls back to a
+Foundation-Model + Genie SQL pipeline so the tab still answers.
 
-1. **AI/ML → Agent Bricks → Multi-Agent Supervisor → Create**
-2. Wire your child agents (e.g. Genie space, Knowledge Assistant) using
-   parameterized descriptions. Reference your brand via `BRAND_NAME`.
+If you want the supervisor experience:
+
+1. **AI/ML → Agent Bricks → Multi-Agent Supervisor → Create**.
+2. Wire your child agents — typically:
+   - **FinOps Explorer** — Genie over your AI vendor / spend tables
+   - **AI Ops Explorer** — Genie over the `m_*` tables (notebook 04)
+   - **Contract Analyst** — Knowledge Assistant over your governance PDFs
+3. The supervisor function names you give the agents will appear in the
+   `/api/agent/ask` response under `raw_agent`.  Make sure the patterns in
+   `template.config.json["agents"]["name_mappings"]` match them so the
+   right colored tag renders on each assistant message.
+4. Copy the resulting endpoint name (e.g. `mas-c39464e9-endpoint`) into
+   `DATABRICKS_MAS_ENDPOINT` in `.env`, then re-render `app.yaml`:
+
+   ```bash
+   python render-app-yaml.py
+   ```
+
+   The renderer will emit a `mas-endpoint` resource block on the resulting
+   `app.yaml` and bind the Chat tab to it via the SP `CAN_QUERY` permission.
+5. The template ships with `user_api_scopes: [serving.serving-endpoints,
+   dashboards.genie]` already declared in `app.yaml.template`.  This is what
+   triggers Databricks Apps to inject `X-Forwarded-Access-Token` so the
+   server can run downstream Genie queries on behalf of the viewer (per-user
+   masks resolve correctly).  Comment the block out if you want
+   service-principal-only auth.
+
+> The Chat tab also displays a **viewer / OBO badge** in the sidebar.  Green
+> dot = OBO active, orange dot = service-principal mode.  Use it to
+> demonstrate which identity the supervisor is running queries as.
 
 ---
 
@@ -248,5 +294,6 @@ up.
   (e.g. "show me CDR processing costs" for a telco deploy).
 - Schedule `notebooks/04_materialize_app_tables.py` as a daily Lakeflow job
   for fresh dashboards.
-- For production, configure the App with an account-level `SUPER_USER_GROUP`
-  group and apply masking UDFs in notebook 01 to scrub PII from non-admins.
+- For production, configure the App with an account-level
+  `SUPER_USER_GROUP_NAME` group and run notebook 05 to scrub PII from
+  non-admins via dynamic column masks on the `m_*` tables.

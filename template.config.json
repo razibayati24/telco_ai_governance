@@ -76,5 +76,88 @@
       { "id": "queries", "label": "Query Optimization" },
       { "id": "security", "label": "Security Audit" }
     ]
+  },
+
+  "agents": {
+    "_comment": "Multi-Agent Supervisor (Agent Bricks) sidebar config consumed by the Chat tab. The `sidebar` block defines the agent cards (label, color, description) shown in the left pane. The `name_mappings` list maps the raw function-call names returned by the supervisor (e.g. 'agent-acme-finops-explorer') back to a sidebar key so we can render the right-colored tag on each assistant message.",
+
+    "app_name": "{brand_name} AI Governance",
+    "app_subtitle": "FinOps & Responsible-AI Intelligence Across {brand_name} Bricks",
+    "app_icon": "\u2B22",
+    "powered_by": "Databricks Agent Bricks",
+    "placeholder": "Ask about AI vendor contracts, spend, latency SLAs, or governance clauses\u2026",
+
+    "sidebar": {
+      "finops_explorer": {
+        "label": "FinOps Explorer",
+        "color": "#7BC88F",
+        "description": "Queries live AI vendor spend, contract portfolio, and ops metrics via Genie."
+      },
+      "ai_ops_explorer": {
+        "label": "AI Ops Explorer",
+        "color": "#E8945A",
+        "description": "Investigates serving latency, MLflow run quality, query failures, and access denials via Genie."
+      },
+      "contract_analyst": {
+        "label": "Contract Analyst",
+        "color": "#6B9BD2",
+        "description": "Searches AI vendor contract language — training-data clauses, governance addenda, renewal terms."
+      }
+    },
+
+    "demo_paths": [
+      {
+        "title": "Vendor Spend & Portfolio",
+        "icon": "\u25B2",
+        "questions": [
+          "List our top 5 AI vendors by total spend.",
+          "Which AI vendor contracts are trending over committed spend?",
+          "Show me our AI spend by service category.",
+          "Which contracts expire in the next 90 days?"
+        ]
+      },
+      {
+        "title": "Contract Language",
+        "icon": "\u25CF",
+        "questions": [
+          "What does our OpenAI contract say about training-data usage?",
+          "Compare auto-renewal terms across our top 3 LLM vendors.",
+          "Which contracts are missing an AI governance addendum?",
+          "What are the data-residency clauses across our LLM vendors?"
+        ]
+      },
+      {
+        "title": "AI Ops Cost & Anomalies",
+        "icon": "\u25C6",
+        "questions": [
+          "Which AI cost categories trended up the most in the last 30 days?",
+          "Show daily DBU spend by cost category for the last week.",
+          "Are there any active cost anomalies right now?",
+          "What are the top 5 endpoints by total token consumption?"
+        ]
+      },
+      {
+        "title": "Performance & Access",
+        "icon": "\u25A3",
+        "questions": [
+          "Which models are exceeding our 2 second latency SLA?",
+          "What is the MLflow run success rate over time?",
+          "Who are the top users with denied access events this month?",
+          "Which services have the most denied access attempts?"
+        ]
+      }
+    ],
+
+    "name_mappings": [
+      { "pattern": "contract|analyst|policy|knowledge", "key": "contract_analyst" },
+      { "pattern": "finops|spend|vendor", "key": "finops_explorer" },
+      { "pattern": "ai-ops|aiops|operations|ai-operations", "key": "ai_ops_explorer" },
+      { "pattern": "explorer|data-explorer|genie", "key": "finops_explorer" }
+    ]
+  },
+
+  "mas": {
+    "_comment": "Multi-Agent Supervisor (Agent Bricks) endpoint name. Resource-bound via the `mas-endpoint` resource in app.yaml. Override with the DATABRICKS_MAS_ENDPOINT env var.",
+    "endpoint_name": ""
   }
 }

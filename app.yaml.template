@@ -17,6 +17,16 @@
 
 command: ['python', 'app.py']
 
+# On-behalf-of scopes — the viewer's OAuth token will be forwarded to the
+# app under X-Forwarded-Access-Token *only* if the matching scope is
+# declared here.  These two are required for the Chat tab so the
+# Multi-Agent Supervisor can run Genie queries as the viewer (per-user
+# column masks resolve correctly).  Comment the entire block out to fall
+# back to service-principal-only auth.
+user_api_scopes:
+  - serving.serving-endpoints
+  - dashboards.genie
+
 env:
   # --- Resource-bound (auto-injected from `resources:` below) ---
   - name: 'DATABRICKS_WAREHOUSE_ID'
@@ -37,6 +47,17 @@ env:
     value: '{{ DATABRICKS_EMBEDDING_MODEL | default("databricks-gte-large-en") }}'
   - name: 'DATABRICKS_GENIE_SPACE_ID'
     value: '{{ DATABRICKS_GENIE_SPACE_ID | default("") }}'
+  - name: 'DATABRICKS_FINOPS_GENIE_SPACE_ID'
+    value: '{{ DATABRICKS_FINOPS_GENIE_SPACE_ID | default("") }}'
+  - name: 'DATABRICKS_AI_OPS_GENIE_SPACE_ID'
+    value: '{{ DATABRICKS_AI_OPS_GENIE_SPACE_ID | default("") }}'
+
+  # --- Multi-Agent Supervisor (Agent Bricks) endpoint ---
+  # Leave blank to make /api/agent/ask transparently fall back to the
+  # Foundation-Model + Genie SQL pipeline (chat tab still works).  When
+  # set, the value should match the `mas-endpoint` resource name below.
+  - name: 'DATABRICKS_MAS_ENDPOINT'
+    value: '{{ DATABRICKS_MAS_ENDPOINT | default("") }}'
 
   # --- Branding (consumed by /api/config + /api/ka + /api/genie) ---
   - name: 'BRAND_NAME'
@@ -66,3 +87,8 @@ resources:
     serving_endpoint:
       name: '{{ DATABRICKS_LLM_ENDPOINT }}'
       permission: CAN_QUERY
+{% if DATABRICKS_MAS_ENDPOINT %}  - name: mas-endpoint
+    serving_endpoint:
+      name: '{{ DATABRICKS_MAS_ENDPOINT }}'
+      permission: CAN_QUERY
+{% endif %}

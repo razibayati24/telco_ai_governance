@@ -22,6 +22,8 @@ Supported placeholder syntax
 * ``{{ NAME }}``                     — required; raises if NAME missing/blank
 * ``{{ NAME | default("foo") }}``    — falls back to ``"foo"``
 * ``{{ NAME | default('foo') }}``    — single quotes also fine
+* ``{% if NAME %}...{% endif %}``    — block included only when NAME is set
+                                       (truthy & non-empty).  No ``{% else %}``.
 
 We deliberately do NOT depend on Jinja2 — only the standard library — so the
 script works in any Python 3.8+ environment without ``pip install``.
@@ -43,6 +45,16 @@ PLACEHOLDER_RE = re.compile(
     r"(?P<quote>[\"'])(?P<default>.*?)(?P=quote)"  # quoted default value
     r"\s*\))?"
     r"\s*\}\}"                                     # closing braces
+)
+
+# Minimal Jinja-style {% if NAME %}...{% endif %} block.  No {% else %},
+# nesting is not supported.  The body is included verbatim only when the
+# named variable is set to a non-empty value (after env / .env lookup).
+IF_BLOCK_RE = re.compile(
+    r"\{%\s*if\s+(?P<name>[A-Z_][A-Z0-9_]*)\s*%\}"
+    r"(?P<body>.*?)"
+    r"\{%\s*endif\s*%\}",
+    re.DOTALL,
 )
 
 
@@ -70,14 +82,38 @@ def load_dotenv(path: Path) -> Dict[str, str]:
     return values
 
 
+def _resolve(name: str, env: Dict[str, str]) -> str:
+    """Look up NAME in OS env first, then .env-loaded values."""
+    return os.environ.get(name) or env.get(name) or ""
+
+
+def _expand_if_blocks(text: str, env: Dict[str, str]) -> str:
+    """Replace ``{% if VAR %}body{% endif %}`` with ``body`` if VAR is
+    truthy (set + non-empty), otherwise drop the block entirely.
+
+    Run before placeholder substitution so a block whose VAR is missing
+    doesn't trigger the "missing required values" error.
+    """
+
+    def _sub(m: re.Match) -> str:
+        name = m.group("name")
+        body = m.group("body")
+        return body if _resolve(name, env) else ""
+
+    return IF_BLOCK_RE.sub(_sub, text)
+
+
 def render(template_text: str, env: Dict[str, str]) -> str:
     missing: list[str] = []
+
+    # Strip optional blocks first so their bodies don't trigger missing-var
+    # errors on deployments that don't set the optional variable.
+    template_text = _expand_if_blocks(template_text, env)
 
     def _sub(m: re.Match) -> str:
         name = m.group("name")
         default = m.group("default")
-        # OS env wins over .env values (so CI overrides etc. work)
-        val = os.environ.get(name) or env.get(name) or ""
+        val = _resolve(name, env)
         if not val and default is not None:
             return default
         if not val:

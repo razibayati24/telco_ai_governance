@@ -1,9 +1,10 @@
 """API routes for AI Governance Monitor."""
 
 import logging
+import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 from server.config import (
     CATALOG_SCHEMA, get_databricks_host, get_access_token,
@@ -12,7 +13,9 @@ from server.config import (
     TBL_QUERY_OPT, TBL_EXPENSIVE_QUERIES,
     LLM_ENDPOINT, VS_ENDPOINT as VS_ENDPOINT_NAME, VS_INDEX as VS_INDEX_NAME,
     GENIE_SPACE_ID as GENIE_SPACE_ID_CFG,
+    MAS_ENDPOINT_NAME,
     load_template_config, get_brand_name, get_app_title, get_app_subtitle,
+    get_agent_config,
 )
 from server.db import execute_query
 
@@ -873,3 +876,274 @@ def genie_ask(query: GenieQuery):
     except Exception as e:
         logger.error(f"Genie ask error: {e}")
         return {"answer": f"Error: {str(e)}", "conversation_id": None, "sql": None}
+
+
+# ---------------------------------------------------------------------------
+# Multi-Agent Supervisor (Agent Bricks) — Chat tab backend
+# ---------------------------------------------------------------------------
+#
+# The Chat tab in App.tsx talks to two endpoints:
+#   • GET  /api/agent/config — returns the sidebar copy (agent cards, demo
+#     paths, brand strings, OBO badge state).  All copy is loaded from
+#     `template.config.json["agents"]` via ``get_agent_config`` so a
+#     deployer can re-brand without touching React code.
+#   • POST /api/agent/ask    — forwards a chat thread to the configured
+#     ``MAS_ENDPOINT_NAME`` Multi-Agent Supervisor.  Falls back to the
+#     Foundation-Model + Genie SQL pipeline (``genie_ask``) if MAS is
+#     unreachable so the chat tab always returns something.
+#
+# Service-principal vs. on-behalf-of (OBO):
+#   The Chat tab is wired to forward the viewer's OBO token to MAS *only*
+#   when ``user_api_scopes: [serving.serving-endpoints, dashboards.genie]``
+#   is declared in app.yaml.  When that scope is missing, we use the app
+#   service-principal token instead (the SP has CAN_QUERY via the
+#   `mas-endpoint` resource block).  Either way, downstream Genie queries
+#   resolve column masks on a per-viewer basis when OBO is active.
+
+
+class AgentMessage(BaseModel):
+    role: str
+    content: str
+
+
+class AgentChatQuery(BaseModel):
+    messages: list[AgentMessage]
+
+
+def _get_obo_token(request: Request) -> str | None:
+    """Extract the viewer's OBO token from request headers if present.
+
+    Databricks Apps inject ``X-Forwarded-Access-Token`` when
+    ``user_api_scopes`` is declared in app.yaml.  When present, we forward
+    this token so MAS runs Genie queries as the viewer (per-user masks
+    resolve correctly).  Otherwise we fall back to the SP token.
+    """
+    if request is None:
+        return None
+    for k in ("x-forwarded-access-token", "X-Forwarded-Access-Token"):
+        v = request.headers.get(k)
+        if v:
+            return v
+    return None
+
+
+def _get_user_email(request: Request) -> str | None:
+    """Best-effort lookup of the viewer's email from injected headers."""
+    if request is None:
+        return None
+    for k in (
+        "x-forwarded-email",
+        "X-Forwarded-Email",
+        "x-forwarded-user",
+        "X-Forwarded-User",
+    ):
+        v = request.headers.get(k)
+        if v:
+            return v
+    return None
+
+
+def _normalize_agent_name(raw: str | None) -> str | None:
+    """Map an MAS function_call name back to a sidebar agent key.
+
+    The Multi-Agent Supervisor returns raw agent function names (e.g.
+    ``agent-acme-finops-explorer``, ``agent-acme-contract-analyst``,
+    ``ACME_AI_Governance_Supervisor``) that customers re-brand per
+    deployment.  Rather than hard-code a mapping in this file, we read an
+    ordered list of regex patterns from ``template.config.json``:
+
+        "name_mappings": [
+          { "pattern": "contract|analyst|policy", "key": "contract_analyst" },
+          { "pattern": "ai-ops|operations",       "key": "ai_ops_explorer" },
+          { "pattern": "finops|spend|explorer",   "key": "finops_explorer" }
+        ]
+
+    The first matching pattern wins, so deployers should put the more
+    specific patterns first.  Supervisor-self callbacks return ``None``
+    so the UI suppresses the agent tag.
+    """
+    if not raw:
+        return None
+    r = raw.lower().replace("_", "-").replace(" ", "-")
+
+    # Supervisor itself — no tag.
+    if "supervisor" in r:
+        return None
+
+    cfg = get_agent_config()
+    mappings = cfg.get("name_mappings", []) or []
+    for m in mappings:
+        pattern = m.get("pattern")
+        key = m.get("key")
+        if not pattern or not key:
+            continue
+        try:
+            if re.search(pattern, r):
+                return key
+        except re.error:
+            continue
+
+    # Fallback: if the raw name is already a sidebar key, pass it through.
+    if raw in (cfg.get("agents") or {}):
+        return raw
+    return None
+
+
+@router.get("/agent/config")
+def agent_config(request: Request):
+    """Return Chat-tab sidebar config + viewer identity (OBO badge state).
+
+    The shape mirrors the deployed app so the existing Chat.tsx renders
+    unchanged: ``app_name``, ``app_subtitle``, ``app_icon``, ``agents``
+    (sidebar dict), ``demo_paths``, ``placeholder``, ``viewer_email``,
+    ``obo_active``.
+    """
+    cfg = get_agent_config()
+    obo_token = _get_obo_token(request)
+    return {
+        "app_name": cfg["app_name"],
+        "app_subtitle": cfg["app_subtitle"],
+        "app_icon": cfg["app_icon"],
+        "powered_by": cfg["powered_by"],
+        "agents": cfg["agents"],
+        "demo_paths": cfg["demo_paths"],
+        "placeholder": cfg["placeholder"],
+        "viewer_email": _get_user_email(request),
+        "obo_active": bool(obo_token),
+        "mas_endpoint": MAS_ENDPOINT_NAME,
+    }
+
+
+@router.post("/agent/ask")
+def agent_ask(query: AgentChatQuery, request: Request):
+    """Forward a chat thread to the Multi-Agent Supervisor (Agent Bricks).
+
+    Falls back to the Foundation-Model + Genie SQL pipeline when:
+      • ``MAS_ENDPOINT_NAME`` is unset (open-template default), or
+      • the MAS serving endpoint returns 4xx/5xx / is unreachable.
+    """
+    import json as _json
+    import urllib.request
+    import urllib.error
+
+    host = get_databricks_host()
+
+    # Service-principal token is the safe default — the SP has CAN_QUERY
+    # via the `mas-endpoint` resource in app.yaml.  We only swap to the
+    # OBO token if the deployer explicitly enabled OBO for serving
+    # endpoints (``user_api_scopes: [serving.serving-endpoints]``) AND a
+    # token is actually present on this request.
+    sp_token = get_access_token()
+    obo_token = _get_obo_token(request)
+    authn_token = obo_token or sp_token
+
+    api_messages = [{"role": m.role, "content": m.content} for m in query.messages]
+
+    answer: str | None = None
+    agent_called: str | None = None
+    source = "mas"
+
+    def _parse_mas_response(data):
+        ans = None
+        called = None
+        for item in data.get("output", []) or []:
+            if item.get("type") == "function_call":
+                called = item.get("name") or called
+            elif item.get("type") == "message":
+                for c in item.get("content", []) or []:
+                    if c.get("type") == "output_text" and c.get("text"):
+                        ans = c["text"]
+        if ans is None:
+            ans = (
+                data.get("choices", [{}])[0].get("message", {}).get("content")
+                if data.get("choices")
+                else None
+            )
+        if ans is None and "output_text" in data:
+            ans = data["output_text"]
+        return ans, called
+
+    # Skip MAS entirely if it's not configured — go straight to fallback.
+    if MAS_ENDPOINT_NAME:
+        serving_url = f"{host}/serving-endpoints/{MAS_ENDPOINT_NAME}/invocations"
+        body = _json.dumps({"input": api_messages}).encode()
+
+        def _invoke_mas(token: str):
+            r = urllib.request.Request(
+                serving_url,
+                data=body,
+                method="POST",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+            )
+            with urllib.request.urlopen(r, timeout=180) as resp:
+                return _json.loads(resp.read())
+
+        try:
+            data = _invoke_mas(authn_token)
+            answer, agent_called = _parse_mas_response(data)
+        except urllib.error.HTTPError as e:
+            err_body = ""
+            try:
+                err_body = e.read().decode()[:300]
+            except Exception:
+                pass
+            if e.code in (401, 403):
+                # Retry with a freshly-issued SP token. Handles the brief
+                # window after a permission grant when the cached token
+                # may still be missing the new scope, and the case where
+                # OBO was attempted but the token lacked the right scope.
+                try:
+                    fresh_token = get_access_token()
+                    logger.info(
+                        f"MAS {MAS_ENDPOINT_NAME} HTTP {e.code}; retrying with refreshed SP token."
+                    )
+                    data = _invoke_mas(fresh_token)
+                    answer, agent_called = _parse_mas_response(data)
+                except Exception as retry_err:
+                    logger.warning(
+                        f"MAS endpoint {MAS_ENDPOINT_NAME} HTTP {e.code}: {err_body}. "
+                        f"Retry also failed: {retry_err}. Falling back to Genie pipeline."
+                    )
+            else:
+                logger.warning(
+                    f"MAS endpoint {MAS_ENDPOINT_NAME} HTTP {e.code}: {err_body}. "
+                    f"Falling back to Genie pipeline."
+                )
+        except Exception as e:
+            logger.warning(
+                f"MAS endpoint {MAS_ENDPOINT_NAME} unreachable: {e}. Falling back to Genie pipeline."
+            )
+    else:
+        logger.info(
+            "MAS_ENDPOINT_NAME unset — using Foundation-Model + Genie SQL fallback for /api/agent/ask."
+        )
+
+    # Fallback path - reuse the existing Genie pipeline directly.
+    if not answer:
+        source = "fallback_genie"
+        last_user_msg = next(
+            (m.content for m in reversed(query.messages) if m.role == "user"),
+            "",
+        )
+        try:
+            fallback = genie_ask(GenieQuery(question=last_user_msg))
+            answer = fallback.get("answer") or "No response received."
+            agent_called = agent_called or "finops_explorer"
+        except Exception as e:
+            logger.error(f"Fallback Genie pipeline failed: {e}")
+            source = "error"
+            answer = (
+                "Unable to reach the AI Governance Supervisor right now. "
+                "Please try again in a moment, or rephrase your question."
+            )
+
+    return {
+        "answer": answer,
+        "agent": _normalize_agent_name(agent_called),
+        "raw_agent": agent_called,
+        "source": source,
+        "endpoint": MAS_ENDPOINT_NAME or None,
+    }
