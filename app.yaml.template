@@ -1,0 +1,68 @@
+# =============================================================================
+# Databricks App configuration template
+# -----------------------------------------------------------------------------
+# This file is a Jinja-style template. Run:
+#     python render-app-yaml.py
+# to read variables from your `.env` file and produce a workspace-specific
+# `app.yaml` next to this template. The generated `app.yaml` is what
+# `databricks apps deploy` actually reads.
+#
+# Why a template? Databricks Apps does NOT substitute env vars inside the
+# `resources:` block at deploy time — `sql_warehouse.id` and
+# `serving_endpoint.name` must be hard literal strings when the YAML is
+# parsed by the apps service. The runtime `env:` block resource bindings
+# (`valueFrom: <resource-key>`) work fine, but the resource definitions
+# themselves need real values.
+# =============================================================================
+
+command: ['python', 'app.py']
+
+env:
+  # --- Resource-bound (auto-injected from `resources:` below) ---
+  - name: 'DATABRICKS_WAREHOUSE_ID'
+    valueFrom: 'sql-warehouse'
+
+  # --- Static workspace config ---
+  - name: 'DATABRICKS_CATALOG'
+    value: '{{ DATABRICKS_CATALOG }}'
+  - name: 'DATABRICKS_SCHEMA'
+    value: '{{ DATABRICKS_SCHEMA | default("ai_governance") }}'
+  - name: 'DATABRICKS_LLM_ENDPOINT'
+    value: '{{ DATABRICKS_LLM_ENDPOINT }}'
+  - name: 'DATABRICKS_VS_ENDPOINT'
+    value: '{{ DATABRICKS_VS_ENDPOINT }}'
+  - name: 'DATABRICKS_VS_INDEX'
+    value: '{{ DATABRICKS_VS_INDEX | default("") }}'
+  - name: 'DATABRICKS_EMBEDDING_MODEL'
+    value: '{{ DATABRICKS_EMBEDDING_MODEL | default("databricks-gte-large-en") }}'
+  - name: 'DATABRICKS_GENIE_SPACE_ID'
+    value: '{{ DATABRICKS_GENIE_SPACE_ID | default("") }}'
+
+  # --- Branding (consumed by /api/config + /api/ka + /api/genie) ---
+  - name: 'BRAND_NAME'
+    value: '{{ BRAND_NAME | default("Acme Corp") }}'
+  - name: 'BRAND_PARENT'
+    value: '{{ BRAND_PARENT | default("") }}'
+  - name: 'BRAND_INDUSTRY'
+    value: '{{ BRAND_INDUSTRY | default("Generic") }}'
+  - name: 'EMAIL_DOMAIN'
+    value: '{{ EMAIL_DOMAIN | default("example.com") }}'
+  - name: 'APP_TITLE'
+    value: '{{ APP_TITLE | default("AI Governance & Observability") }}'
+  - name: 'APP_SUBTITLE'
+    value: '{{ APP_SUBTITLE | default("AI Agentic FinOps Assistant") }}'
+  - name: 'SUPER_USER_GROUP_NAME'
+    value: '{{ SUPER_USER_GROUP_NAME | default("ai_gov_super_users") }}'
+
+  - name: 'NODE_ENV'
+    value: 'production'
+
+resources:
+  - name: sql-warehouse
+    sql_warehouse:
+      id: '{{ DATABRICKS_WAREHOUSE_ID }}'
+      permission: CAN_USE
+  - name: serving-endpoint
+    serving_endpoint:
+      name: '{{ DATABRICKS_LLM_ENDPOINT }}'
+      permission: CAN_QUERY

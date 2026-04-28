@@ -22,16 +22,22 @@
 dbutils.widgets.text("catalog", "", "Unity Catalog Name")
 dbutils.widgets.text("schema", "ai_governance", "Schema Name")
 dbutils.widgets.text("vs_endpoint", "", "Vector Search Endpoint Name")
+dbutils.widgets.text("brand_name", "Acme Corp", "Brand / Customer Name")
+dbutils.widgets.text("embedding_model", "databricks-gte-large-en", "Embedding Model Endpoint")
 
 CATALOG = dbutils.widgets.get("catalog")
 SCHEMA = dbutils.widgets.get("schema")
 VS_ENDPOINT = dbutils.widgets.get("vs_endpoint")
+BRAND_NAME = dbutils.widgets.get("brand_name") or "Acme Corp"
+EMBEDDING_MODEL = dbutils.widgets.get("embedding_model") or "databricks-gte-large-en"
 CATALOG_SCHEMA = f"{CATALOG}.{SCHEMA}"
 
 assert CATALOG, "Please set the 'catalog' widget to your Unity Catalog name"
 assert VS_ENDPOINT, "Please set the 'vs_endpoint' widget to your Vector Search endpoint name"
 print(f"Using: {CATALOG_SCHEMA}")
 print(f"VS Endpoint: {VS_ENDPOINT}")
+print(f"Brand: {BRAND_NAME}")
+print(f"Embedding model: {EMBEDDING_MODEL}")
 
 # COMMAND ----------
 
@@ -75,7 +81,7 @@ COMMENT 'Chunked text from AI governance policy documents for vector search'
 # Policy documents content
 policies = {
     "AI Data Access Regulation Policy": [
-        "This policy establishes the framework for regulating access to data used by artificial intelligence systems within MT&T Corporation. It applies to all employees, contractors, partners, and automated systems that access, process, or generate data through AI/ML platforms deployed on the Databricks Lakehouse Platform. The policy covers all workspaces, model serving endpoints, AI Gateway configurations, foundation model APIs, vector search indexes, and Genie rooms.",
+        "This policy establishes the framework for regulating access to data used by artificial intelligence systems within {BRAND} Corporation. It applies to all employees, contractors, partners, and automated systems that access, process, or generate data through AI/ML platforms deployed on the Databricks Lakehouse Platform. The policy covers all workspaces, model serving endpoints, AI Gateway configurations, foundation model APIs, vector search indexes, and Genie rooms.",
         "All data accessed by AI systems must be classified into four tiers: Public (freely used for AI training and inference), Internal (restricted to internal AI applications with standard access controls), Confidential (requiring enhanced controls including audit logging, encryption, and role-based access), and Restricted (requiring explicit Data Governance Council approval before AI processing, including PII, PHI, financial records, and customer communications).",
         "AI models trained on Confidential or Restricted data must be tagged in Unity Catalog with sensitivity labels. Model serving endpoints exposing such models must implement AI Gateway guardrails to prevent data leakage in responses.",
         "All AI platform access must use Unity Catalog-managed identities. Service principals must be used for automated workflows and model serving endpoints. Personal access tokens are prohibited for production AI workloads. Access to model serving endpoints must follow the principle of least privilege with explicit access control lists.",
@@ -85,8 +91,8 @@ policies = {
         "Violations of the AI Data Access Regulation Policy will be reported to the Chief Data Officer and may result in immediate revocation of AI platform access. Annual compliance audits will be conducted using the AI Access Audit view to verify adherence."
     ],
     "AI Model Governance and Lifecycle Policy": [
-        "This policy defines the governance framework for the complete lifecycle of AI models within MT&T Corporation, from development through deployment, monitoring, and retirement.",
-        "All AI models must be developed using MT&T-approved frameworks and registered in Unity Catalog Model Registry. Each model must have a Model Card documenting purpose, training data sources and lineage, performance metrics, known limitations and biases, and responsible AI assessment results.",
+        "This policy defines the governance framework for the complete lifecycle of AI models within {BRAND} Corporation, from development through deployment, monitoring, and retirement.",
+        "All AI models must be developed using {BRAND}-approved frameworks and registered in Unity Catalog Model Registry. Each model must have a Model Card documenting purpose, training data sources and lineage, performance metrics, known limitations and biases, and responsible AI assessment results.",
         "Currently approved foundation models include Meta Llama 3.3 70B, Anthropic Claude family, OpenAI GPT-4 family, Google Gemini family, and DBRX. Provisioned throughput endpoints must be justified with cost-benefit analysis showing expected usage above 60% utilization.",
         "Model deployment requires a three-stage approval: Stage 1 Technical Review (MLOps validates performance and serving config), Stage 2 Security Review (access controls, data classification, AI Gateway guardrails), Stage 3 Business Review (approved use case and budget). Emergency deployments may bypass Stage 3 with two VP sponsors but must complete review within 5 business days.",
         "Production monitoring requirements include tracking request volume, token consumption, error rates, and latency through the AI Governance Dashboard. Alerts must be configured for error rates exceeding 5%, latency exceeding SLA thresholds, cost exceeding 120% of budget, and input distribution drift.",
@@ -95,7 +101,7 @@ policies = {
         "All customer-facing AI models must undergo bias testing before deployment. Models used for decisions affecting customers must provide explainability features. AI Gateway guardrails must block harmful content, PII leakage, and off-topic responses."
     ],
     "AI Cost Management and FinOps Policy": [
-        "This policy establishes the financial governance framework for AI/ML workloads within MT&T. It ensures cost transparency, accountability, and optimization across model serving, foundation model APIs, model training, and AI-powered analytics.",
+        "This policy establishes the financial governance framework for AI/ML workloads within {BRAND}. It ensures cost transparency, accountability, and optimization across model serving, foundation model APIs, model training, and AI-powered analytics.",
         "AI costs are categorized into five pillars: Foundation Model Serving (Anthropic, OpenAI, Gemini - owned by AI Platform team), Custom Model Inference (real-time inference endpoints - owned by business unit ML teams), Model Training (GPU compute for fine-tuning - owned by Data Science CoE), AI-Powered Analytics (Genie rooms, AI/BI dashboards - owned by Analytics team), and AI Infrastructure (vector search, feature serving - owned by MLOps team).",
         "Cost categories are tracked via v_ai_cost_daily using billing SKUs: ENTERPRISE_ANTHROPIC_MODEL_SERVING, ENTERPRISE_OPENAI_MODEL_SERVING, ENTERPRISE_GEMINI_MODEL_SERVING, ENTERPRISE_MODEL_TRAINING, and ENTERPRISE_SERVERLESS_REAL_TIME_INFERENCE.",
         "Budget approval thresholds: Under $5K/month requires team lead approval, $5K-$25K requires Director approval with cost justification, $25K-$100K requires VP approval with ROI analysis, over $100K requires C-suite approval with strategic business case.",
@@ -104,7 +110,7 @@ policies = {
         "All AI costs must be attributed to business units using Unity Catalog tags and usage_context fields. Monthly chargeback reports are generated from v_ai_cost_daily and v_serving_endpoint_daily views."
     ],
     "AI Security and Access Control Policy": [
-        "This policy defines security controls and access management for AI systems within MT&T. It addresses authentication, authorization, network security, data protection, and incident response specific to AI/ML workloads.",
+        "This policy defines security controls and access management for AI systems within {BRAND}. It addresses authentication, authorization, network security, data protection, and incident response specific to AI/ML workloads.",
         "Authentication requirements: federated authentication through enterprise IdP (Azure AD/Okta), MFA required for all human users, service principals must use OAuth M2M tokens with 90-day rotation. Personal access tokens prohibited for production workloads.",
         "Authorization follows RBAC with roles: AI Platform Admin (full access), Model Owner (manage specific endpoints and metrics), Model Consumer (invoke endpoints and Genie rooms), AI Auditor (read-only governance views), Data Scientist (training resources and development endpoints).",
         "Unauthorized access detection via v_ai_access_audit monitors: HTTP 401/403 responses, more than 5 denied attempts per user per hour, access to decommissioned endpoints, access from unapproved IP ranges, and unexpected service principal access. SOC must investigate high-severity alerts within 4 hours.",
@@ -113,7 +119,7 @@ policies = {
         "AI security incidents include data exfiltration through responses, prompt injection attacks, unauthorized model deployment, AI Gateway bypass attempts, and anomalous token consumption."
     ],
     "Genie Room and AI Assistant Governance Policy": [
-        "This policy establishes governance for Databricks Genie rooms and AI-powered assistants at MT&T. It ensures natural language analytics tools are deployed responsibly with appropriate access controls, usage monitoring, and quality assurance.",
+        "This policy establishes governance for Databricks Genie rooms and AI-powered assistants at {BRAND}. It ensures natural language analytics tools are deployed responsibly with appropriate access controls, usage monitoring, and quality assurance.",
         "New Genie rooms require approval from data owner(s), workspace administrator, and AI Governance team (for system tables or cross-functional data). Each room must have a designated owner.",
         "Genie rooms inherit Unity Catalog permissions - users can only query data they have SELECT access to. Rooms must NOT contain raw PII, unmasked financial data, or employee HR records unless dynamic data masking is applied.",
         "Usage monitoring through v_assistant_genie_usage tracks daily event counts per user, peak usage hours, active vs inactive rooms, and adoption metrics. Usage limits: 500 queries/user/day, 50 concurrent users per room, 5-minute query timeout.",
@@ -121,7 +127,7 @@ policies = {
         "Genie room conversations are logged and retained for 90 days. Rooms for regulatory reporting must be validated by Compliance before deployment."
     ],
     "AI Platform Acceptable Use Policy": [
-        "This policy defines acceptable and prohibited uses of MT&T AI platform resources including model serving endpoints, foundation model APIs, AI Gateway, Genie rooms, and associated tools.",
+        "This policy defines acceptable and prohibited uses of {BRAND} AI platform resources including model serving endpoints, foundation model APIs, AI Gateway, Genie rooms, and associated tools.",
         "Approved use cases include: customer experience improvement (chatbots, virtual assistants), network optimization and predictive maintenance, fraud detection and security analytics, revenue analytics and churn prediction, internal knowledge management, data quality monitoring, and self-service analytics through Genie rooms.",
         "Prohibited uses: generating illegal content, AI for employment decisions without HR/Legal approval, unauthorized competitive intelligence, training on customer data without consent, generating code for unauthorized systems, sharing endpoint credentials externally, bypassing AI Gateway guardrails, and using production resources for personal projects.",
         "User responsibilities: complete annual AI Ethics and Governance training, report violations within 24 hours, populate usage_context fields in serving requests, review and acknowledge this policy annually.",
@@ -130,13 +136,22 @@ policies = {
     ]
 }
 
+# Substitute the {BRAND} placeholder with the configured brand name so the
+# policy text reflects the deployer's organization (e.g. "Acme Corp", "MT&T").
+def _personalize(text: str) -> str:
+    return text.replace("{BRAND}", BRAND_NAME)
+
 # Insert chunks
 from pyspark.sql import Row
 rows = []
 for policy_name, chunks in policies.items():
     source_file = policy_name.replace(" ", "_") + ".pdf"
     for chunk_text in chunks:
-        rows.append(Row(policy_name=policy_name, chunk_text=chunk_text, source_file=source_file))
+        rows.append(Row(
+            policy_name=policy_name,
+            chunk_text=_personalize(chunk_text),
+            source_file=source_file,
+        ))
 
 df = spark.createDataFrame(rows)
 df.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{CATALOG_SCHEMA}.policy_chunks")
@@ -165,7 +180,7 @@ try:
         pipeline_type="TRIGGERED",
         primary_key="chunk_id",
         embedding_source_column="chunk_text",
-        embedding_model_endpoint_name="databricks-gte-large-en"
+        embedding_model_endpoint_name=EMBEDDING_MODEL
     )
     print(f"Created vector search index: {INDEX_NAME}")
 except Exception as e:

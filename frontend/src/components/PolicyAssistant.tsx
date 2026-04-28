@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { BookOpen, Send, Loader2, FileText, Bot, User } from 'lucide-react';
+import { useAppConfig } from '../hooks/useAppConfig';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -19,6 +20,7 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function PolicyAssistant() {
+  const cfg = useAppConfig();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -87,7 +89,7 @@ export default function PolicyAssistant() {
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <Bot className="w-12 h-12 text-gray-600 mb-4" />
                 <h4 className="text-lg text-gray-400 font-medium mb-2">
-                  Ask about MT&T AI Governance Policies
+                  {cfg.policy_assistant.empty_state_heading}
                 </h4>
                 <p className="text-sm text-gray-500 max-w-md">
                   This assistant answers questions from 6 policy documents covering

@@ -1,25 +1,61 @@
+# =============================================================================
+# Databricks App configuration (RENDERED FILE — do not hand-edit)
+# -----------------------------------------------------------------------------
+# This file is generated from `app.yaml.template` by:
+#     python render-app-yaml.py
+# After cloning this template, copy `.env.example` -> `.env`, fill in your
+# values, then re-run the renderer to overwrite this file.
+#
+# The defaults below produce a working file *only* if `.env` is populated.
+# The `${...}` markers below are placeholders in the un-rendered template and
+# must be replaced with real values before deploy.
+# =============================================================================
+
 command: ['python', 'app.py']
+
 env:
   - name: 'DATABRICKS_WAREHOUSE_ID'
-    value: '${WAREHOUSE_ID}'          # Replace with your SQL warehouse ID
+    valueFrom: 'sql-warehouse'
   - name: 'DATABRICKS_CATALOG'
-    value: '${CATALOG}'               # Replace with your Unity Catalog name
+    value: '${CATALOG}'                  # e.g. "main", "my_company_catalog"
   - name: 'DATABRICKS_SCHEMA'
-    value: 'ai_governance'            # Change if using a different schema name
+    value: 'ai_governance'
   - name: 'DATABRICKS_LLM_ENDPOINT'
-    value: '${LLM_ENDPOINT}'          # Foundation model serving endpoint name
+    value: '${LLM_ENDPOINT}'             # e.g. "databricks-claude-sonnet-4-5"
   - name: 'DATABRICKS_VS_ENDPOINT'
-    value: '${VS_ENDPOINT}'           # Vector Search endpoint name
+    value: '${VS_ENDPOINT}'              # e.g. "vs-shared-endpoint"
+  - name: 'DATABRICKS_VS_INDEX'
+    value: ''                             # leave blank to default to <catalog>.<schema>.policy_chunks_vs_index
+  - name: 'DATABRICKS_EMBEDDING_MODEL'
+    value: 'databricks-gte-large-en'
   - name: 'DATABRICKS_GENIE_SPACE_ID'
-    value: '${GENIE_SPACE_ID}'        # Created by notebook 03 (leave blank to skip Genie)
+    value: '${GENIE_SPACE_ID}'           # printed by notebook 03; leave blank to skip the Genie iframe link
+
+  # --- Branding ---
+  - name: 'BRAND_NAME'
+    value: 'Acme Corp'                    # customer name shown in header + AI prompts
+  - name: 'BRAND_PARENT'
+    value: ''                             # parent / holding company (optional)
+  - name: 'BRAND_INDUSTRY'
+    value: 'Generic'                      # "Telco" / "Retail" / "Finance" / etc.
+  - name: 'EMAIL_DOMAIN'
+    value: 'example.com'
+  - name: 'APP_TITLE'
+    value: 'AI Governance & Observability'
+  - name: 'APP_SUBTITLE'
+    value: 'AI Agentic FinOps Assistant'
+  - name: 'SUPER_USER_GROUP_NAME'
+    value: 'ai_gov_super_users'
+
   - name: 'NODE_ENV'
     value: 'production'
+
 resources:
   - name: sql-warehouse
     sql_warehouse:
-      id: '${WAREHOUSE_ID}'           # Replace with your SQL warehouse ID
+      id: '${WAREHOUSE_ID}'              # e.g. "1234567890abcdef"
       permission: CAN_USE
   - name: serving-endpoint
     serving_endpoint:
-      name: '${LLM_ENDPOINT}'         # Replace with your foundation model endpoint name
+      name: '${LLM_ENDPOINT}'            # e.g. "databricks-claude-sonnet-4-5"
       permission: CAN_QUERY

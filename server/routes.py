@@ -12,6 +12,7 @@ from server.config import (
     TBL_QUERY_OPT, TBL_EXPENSIVE_QUERIES,
     LLM_ENDPOINT, VS_ENDPOINT as VS_ENDPOINT_NAME, VS_INDEX as VS_INDEX_NAME,
     GENIE_SPACE_ID as GENIE_SPACE_ID_CFG,
+    load_template_config, get_brand_name, get_app_title, get_app_subtitle,
 )
 from server.db import execute_query
 
@@ -630,11 +631,37 @@ def get_genie_top_users():
 
 @router.get("/config")
 def get_frontend_config():
-    """Expose workspace-specific config to the frontend."""
+    """Expose workspace-specific + brand config to the frontend.
+
+    The frontend reads this once at boot to populate the page title, header,
+    chat panel copy, and Genie deep-link.  All UI-customizable copy lives in
+    ``template.config.json`` and can be overridden via env vars.
+    """
     host = get_databricks_host()
+    cfg = load_template_config()
     return {
-        "genie_url": f"{host}/genie/rooms/{GENIE_SPACE_ID}" if GENIE_SPACE_ID else None,
         "workspace_host": host,
+        "genie_url": (
+            f"{host}/genie/rooms/{GENIE_SPACE_ID}" if GENIE_SPACE_ID else None
+        ),
+        "brand": cfg["brand"],
+        "app": cfg["app"],
+        "policy_chat_popup": cfg["policy_chat_popup"],
+        "policy_assistant": {
+            "empty_state_heading": cfg["policy_assistant"]["empty_state_heading"].format(
+                brand_name=get_brand_name()
+            ),
+            "empty_state_description": cfg["policy_assistant"][
+                "empty_state_description"
+            ],
+            "suggested_questions": cfg["policy_assistant"]["suggested_questions"],
+        },
+        "genie_chat": {
+            "empty_state_heading": cfg["genie_chat"]["empty_state_heading"],
+            "empty_state_description": cfg["genie_chat"]["empty_state_description"],
+            "suggested_questions": cfg["genie_chat"]["suggested_questions"],
+        },
+        "dashboard": cfg["dashboard"],
     }
 
 
@@ -702,18 +729,14 @@ def _generate_answer(question: str, context_chunks: list[dict]) -> str:
         for c in context_chunks
     ])
 
+    cfg = load_template_config()
+    system_prompt = cfg["policy_assistant"]["system_prompt"].format(
+        brand_name=get_brand_name()
+    )
     response = client.chat.completions.create(
         model=LLM_ENDPOINT,
         messages=[
-            {"role": "system", "content": (
-                "You are the Telecom AI Governance Policy Assistant. Answer questions about "
-                "telecom data classification levels (Unrestricted, Sensitive, Secure, PII), "
-                "internal access levels (Level 1-5), SOX compliance for AI systems, CPNI "
-                "protection, network data governance, and approved/prohibited AI uses based "
-                "ONLY on the provided policy context. Be specific, cite the relevant policy "
-                "by name, and provide actionable guidance. If the context doesn't contain "
-                "the answer, say so. Keep answers concise - one to two paragraphs max."
-            )},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Policy Context:\n{context}\n\n---\n\nQuestion: {question}"},
         ],
         max_tokens=1024,
@@ -792,19 +815,14 @@ def genie_ask(query: GenieQuery):
 
 8. m_query_optimization: query_date, executed_by, statement_type, compute_type, warehouse_id, client_application, query_count, avg_duration_ms, max_duration_ms, total_duration_ms, avg_exec_ms, avg_compile_ms, total_read_bytes, total_read_rows, total_spill_bytes, succeeded, failed, cache_hits"""
 
+        cfg = load_template_config()
+        genie_system_prompt = cfg["genie_chat"]["system_prompt"].format(
+            brand_name=get_brand_name(), table_context=table_context
+        )
         response = client.chat.completions.create(
             model=LLM_ENDPOINT,
             messages=[
-                {"role": "system", "content": f"""You are an AI FinOps analyst for the Telecom AI Landscape platform.
-
-{table_context}
-
-Rules:
-- Be brief. Respond in one short paragraph with the key numbers and insight.
-- Do NOT show SQL queries in your response. Generate them silently in a hidden ```sql block so the system can execute them, but never surface them to the user.
-- Use concrete numbers (e.g. "12.1M DBUs", "7,729 idle endpoints", "avg latency 342ms").
-- If you spot something concerning, call it out in one sentence.
-- No bullet lists, no headers, no verbose explanations. Just a concise paragraph."""},
+                {"role": "system", "content": genie_system_prompt},
                 {"role": "user", "content": query.question},
             ],
             max_tokens=1024,

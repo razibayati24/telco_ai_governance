@@ -1,0 +1,80 @@
+{
+  "$schema": "./template.config.schema.json",
+  "_comment": "Build-time / runtime UI config for the AI Governance Monitor template. Values here are loaded by the FastAPI server (server/config.py) at startup and exposed to the React frontend via /api/config. Anything you set here can be overridden by an env var of the same uppercased name.",
+
+  "brand": {
+    "name": "Acme Corp",
+    "parent": "Acme Holdings",
+    "industry": "Generic",
+    "email_domain": "example.com"
+  },
+
+  "app": {
+    "title": "AI Governance & Observability",
+    "subtitle": "AI Agentic FinOps Assistant",
+    "header_brand": "Acme Corp"
+  },
+
+  "policy_assistant": {
+    "system_prompt": "You are the {brand_name} AI Governance Policy Assistant. Answer questions about data classification levels, internal access levels, SOX compliance for AI systems, sensitive data protection, network/infrastructure data governance, and approved/prohibited AI uses based ONLY on the provided policy context. Be specific, cite the relevant policy by name, and provide actionable guidance. If the context doesn't contain the answer, say so. Keep answers concise — one to two paragraphs max.",
+    "empty_state_heading": "Ask about {brand_name} AI Governance Policies",
+    "empty_state_description": "This assistant answers questions from your governance policy documents covering data access, model lifecycle, cost management, security, Genie governance, and acceptable use.",
+    "suggested_questions": [
+      "What are the data classification tiers for AI systems?",
+      "What is the model deployment approval process?",
+      "What are the AI cost budget approval thresholds?",
+      "How is unauthorized access to AI services detected?",
+      "What are the Genie room usage limits?",
+      "What uses of the AI platform are prohibited?",
+      "What are the requirements for decommissioning idle endpoints?",
+      "What are the AI Gateway security controls?"
+    ]
+  },
+
+  "genie_chat": {
+    "system_prompt": "You are an AI FinOps analyst for the {brand_name} AI Landscape platform.\n\n{table_context}\n\nRules:\n- Be brief. Respond in one short paragraph with the key numbers and insight.\n- Do NOT show SQL queries in your response. Generate them silently in a hidden ```sql block so the system can execute them, but never surface them to the user.\n- Use concrete numbers (e.g. \"12.1M DBUs\", \"7,729 idle endpoints\", \"avg latency 342ms\").\n- If you spot something concerning, call it out in one sentence.\n- No bullet lists, no headers, no verbose explanations. Just a concise paragraph.",
+    "empty_state_heading": "Ask about your AI operations",
+    "empty_state_description": "Queries live system table data via natural language",
+    "suggested_questions": [
+      "Show per-model cost attribution for the last 30 days",
+      "What is the average latency per model?",
+      "Which endpoints are idle or underutilized?",
+      "Show unauthorized access attempts this week",
+      "Were there any cost spikes recently?",
+      "What is the MLflow run success rate trend?"
+    ]
+  },
+
+  "policy_chat_popup": {
+    "title": "Policy Assistant",
+    "subtitle": "RAG-powered governance Q&A",
+    "empty_state_label": "Ask about your data & AI policies",
+    "empty_state_subtext": "Policy KB covers data classification, internal access, regulatory compliance, sensitive data protection, infrastructure data, and AI use",
+    "input_placeholder": "Ask about policies...",
+    "loading_text": "Searching policies..."
+  },
+
+  "deployment": {
+    "_comment": "Resource keys referenced by app.yaml. Change only if you know what you're doing.",
+    "app_name": "ai-governance-monitor",
+    "resource_keys": {
+      "warehouse": "sql-warehouse",
+      "llm": "serving-endpoint",
+      "vector_search": "vector-search-endpoint",
+      "genie_space": "genie-space"
+    }
+  },
+
+  "dashboard": {
+    "_comment": "Default rolling window for materialized tables (notebook 04 widget).",
+    "window_days": 30,
+    "tabs": [
+      { "id": "overview", "label": "Overview" },
+      { "id": "cost", "label": "Cost & Anomalies" },
+      { "id": "performance", "label": "Performance" },
+      { "id": "quality", "label": "Quality Evaluation" },
+      { "id": "queries", "label": "Query Optimization" },
+      { "id": "security", "label": "Security Audit" }
+    ]
+  }
+}

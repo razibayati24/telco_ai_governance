@@ -17,6 +17,7 @@ import QueryOptimization from './components/QueryOptimization';
 import SecurityAudit from './components/SecurityAudit';
 import ChatPopups from './components/ChatPopups';
 import { clearAllCache } from './hooks/useApi';
+import { useAppConfig } from './hooks/useAppConfig';
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -30,6 +31,7 @@ const tabs = [
 type TabId = (typeof tabs)[number]['id'];
 
 export default function App() {
+  const cfg = useAppConfig();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [refreshKey, setRefreshKey] = useState(0);
   const [spinning, setSpinning] = useState(false);
@@ -53,10 +55,10 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-white leading-tight">
-                  Telecom AI Landscape
+                  {cfg.brand.name} AI Landscape
                 </h1>
                 <p className="text-[11px] text-gray-500 leading-tight">
-                  AI Agentic FinOps Assistant
+                  {cfg.app.subtitle}
                 </p>
               </div>
             </div>

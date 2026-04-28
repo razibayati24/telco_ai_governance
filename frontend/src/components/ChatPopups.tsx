@@ -11,6 +11,7 @@ import {
   ChevronDown,
   RotateCcw,
 } from 'lucide-react';
+import { useAppConfig } from '../hooks/useAppConfig';
 
 /* ------------------------------------------------------------------ */
 /*  Policy Assistant Chat (RAG)                                        */
@@ -22,22 +23,25 @@ interface Message {
   sources?: string[];
 }
 
-const POLICY_QUESTIONS = [
-  'What are the four data security levels and how are they defined?',
-  'What is the difference between Secure and PII classification?',
-  'What are the access levels for telecom data and who gets Level 3?',
-  'What are the SOX compliance requirements for AI models?',
-  'What CPNI data is protected and can AI models use it?',
-  'What network data can be used for AI model training?',
-  'What are the prohibited uses of subscriber data in AI?',
-  'What happens if there is a CPNI breach in an AI system?',
+const FALLBACK_POLICY_QUESTIONS = [
+  'What are the data classification tiers for AI systems?',
+  'What is the model deployment approval process?',
+  'What are the AI cost budget approval thresholds?',
+  'How is unauthorized access to AI services detected?',
+  'What are the Genie room usage limits?',
+  'What uses of the AI platform are prohibited?',
 ];
 
 function PolicyChat({ onClose }: { onClose: () => void }) {
+  const cfg = useAppConfig();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const policyQuestions =
+    cfg.policy_assistant?.suggested_questions?.length
+      ? cfg.policy_assistant.suggested_questions
+      : FALLBACK_POLICY_QUESTIONS;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,8 +82,8 @@ function PolicyChat({ onClose }: { onClose: () => void }) {
             <BookOpen className="w-4 h-4 text-db-orange" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">Policy Assistant</h3>
-            <p className="text-[10px] text-gray-500">RAG-powered governance Q&A</p>
+            <h3 className="text-sm font-semibold text-white">{cfg.policy_chat_popup.title}</h3>
+            <p className="text-[10px] text-gray-500">{cfg.policy_chat_popup.subtitle}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -106,12 +110,12 @@ function PolicyChat({ onClose }: { onClose: () => void }) {
         {messages.length === 0 && (
           <div className="text-center py-6">
             <Bot className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-400 mb-1">Ask about telecom data & AI policies</p>
+            <p className="text-sm text-gray-400 mb-1">{cfg.policy_chat_popup.empty_state_label}</p>
             <p className="text-[11px] text-gray-500 mb-4">
-              6 policies: data classification, internal access, SOX compliance, CPNI, network data, AI use
+              {cfg.policy_chat_popup.empty_state_subtext}
             </p>
             <div className="space-y-1.5">
-              {POLICY_QUESTIONS.map((q, i) => (
+              {policyQuestions.map((q, i) => (
                 <button
                   key={i}
                   onClick={() => askQuestion(q)}
@@ -175,7 +179,7 @@ function PolicyChat({ onClose }: { onClose: () => void }) {
             <div className="bg-db-dark-700 border border-db-dark-600 rounded-xl px-3 py-2">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 text-db-orange animate-spin" />
-                <span className="text-xs text-gray-400">Searching policies...</span>
+                <span className="text-xs text-gray-400">{cfg.policy_chat_popup.loading_text}</span>
               </div>
             </div>
           </div>
@@ -191,7 +195,7 @@ function PolicyChat({ onClose }: { onClose: () => void }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && askQuestion(input)}
-            placeholder="Ask about policies..."
+            placeholder={cfg.policy_chat_popup.input_placeholder}
             className="flex-1 bg-db-dark-700 border border-db-dark-600 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-db-orange/50 transition"
             disabled={loading}
           />
@@ -218,7 +222,7 @@ interface GenieMessage {
   sql?: string | null;
 }
 
-const GENIE_SUGGESTIONS = [
+const FALLBACK_GENIE_SUGGESTIONS = [
   'Show per-model cost attribution for the last 30 days',
   'What is the average latency per model?',
   'Which endpoints are idle or underutilized?',
@@ -228,11 +232,16 @@ const GENIE_SUGGESTIONS = [
 ];
 
 function GenieChat({ onClose }: { onClose: () => void }) {
+  const cfg = useAppConfig();
   const [messages, setMessages] = useState<GenieMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const genieSuggestions =
+    cfg.genie_chat?.suggested_questions?.length
+      ? cfg.genie_chat.suggested_questions
+      : FALLBACK_GENIE_SUGGESTIONS;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -302,12 +311,12 @@ function GenieChat({ onClose }: { onClose: () => void }) {
         {messages.length === 0 && (
           <div className="text-center py-6">
             <Sparkles className="w-10 h-10 text-purple-400/50 mx-auto mb-3" />
-            <p className="text-sm text-gray-400 mb-1">Ask about your AI operations</p>
+            <p className="text-sm text-gray-400 mb-1">{cfg.genie_chat.empty_state_heading}</p>
             <p className="text-[11px] text-gray-500 mb-4">
-              Queries live system table data via natural language
+              {cfg.genie_chat.empty_state_description}
             </p>
             <div className="space-y-1.5">
-              {GENIE_SUGGESTIONS.map((q, i) => (
+              {genieSuggestions.map((q, i) => (
                 <button
                   key={i}
                   onClick={() => askGenie(q)}

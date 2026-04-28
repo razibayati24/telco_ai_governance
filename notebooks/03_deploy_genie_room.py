@@ -23,16 +23,19 @@
 dbutils.widgets.text("catalog", "", "Unity Catalog Name")
 dbutils.widgets.text("schema", "ai_governance", "Schema Name")
 dbutils.widgets.text("warehouse_id", "", "SQL Warehouse ID")
+dbutils.widgets.text("brand_name", "Acme Corp", "Brand / Customer Name")
 
 CATALOG = dbutils.widgets.get("catalog")
 SCHEMA = dbutils.widgets.get("schema")
 WAREHOUSE_ID = dbutils.widgets.get("warehouse_id")
+BRAND_NAME = dbutils.widgets.get("brand_name") or "Acme Corp"
 CATALOG_SCHEMA = f"{CATALOG}.{SCHEMA}"
 
 assert CATALOG, "Please set the 'catalog' widget to your Unity Catalog name"
 assert WAREHOUSE_ID, "Please set the 'warehouse_id' widget to your SQL warehouse ID"
 print(f"Using: {CATALOG_SCHEMA}")
 print(f"Warehouse: {WAREHOUSE_ID}")
+print(f"Brand: {BRAND_NAME}")
 
 # COMMAND ----------
 
@@ -61,7 +64,7 @@ tables = sorted([
 
 # Create the Genie space
 create_payload = {
-    "title": "AI Governance Q&A",
+    "title": f"{BRAND_NAME} AI Governance Q&A",
     "description": "Natural language Q&A to monitor AI usage, model serving costs, endpoint utilization, access patterns, and Genie/Assistant activity across the platform.",
     "warehouse_id": WAREHOUSE_ID,
     "serialized_space": json.dumps({"version": "2"})
@@ -87,7 +90,7 @@ print(f"\n*** Set DATABRICKS_GENIE_SPACE_ID={space_id} in your app.yaml ***")
 
 # Update with tables
 update_payload = {
-    "title": "AI Governance Q&A",
+    "title": f"{BRAND_NAME} AI Governance Q&A",
     "description": "Natural language Q&A to monitor AI usage, model serving costs, endpoint utilization, access patterns, and Genie/Assistant activity across the platform.",
     "warehouse_id": WAREHOUSE_ID,
     "serialized_space": json.dumps({
